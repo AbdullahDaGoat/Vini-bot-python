@@ -4,7 +4,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const authRoutes = require('./routes/auth');
-const { isAuthenticated } = require('./middleware/auth');
+const  isAuthenticated  = require('./middleware/auth');
 
 const app = express();
 
