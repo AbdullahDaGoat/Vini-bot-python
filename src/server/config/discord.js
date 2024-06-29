@@ -1,3 +1,4 @@
+// src/server/config/discord.js
 require('dotenv').config();
 
 module.exports = {

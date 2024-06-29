@@ -1,9 +1,16 @@
+// src/server/middleware/auth.js
 function isAuthenticated(req, res, next) {
-    if (req.session.user) {
-      next();
-    } else {
-      res.redirect('/auth/discord');
-    }
+  const isApiRequest = req.get('accept').includes('json');
+
+  if (req.session.user) {
+    return next();
   }
-  
-  module.exports = { isAuthenticated };
+
+  if (isApiRequest) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  res.redirect('/auth/discord');
+}
+
+module.exports = isAuthenticated;
