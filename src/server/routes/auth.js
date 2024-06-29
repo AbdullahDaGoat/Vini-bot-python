@@ -42,8 +42,8 @@ router.get('/discord/callback', async (req, res) => {
       },
     });
 
-    const { id, username, email, avatar } = userResponse.data;
-    req.session.user = { id, username, email, avatar };
+    const userData = userResponse.data;
+    req.session.user = userData;
     
     // Set a cookie with the session ID
     res.cookie('sessionId', req.session.id, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });

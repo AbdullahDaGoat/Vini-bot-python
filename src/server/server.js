@@ -1,9 +1,10 @@
 // src/server/server.js
+
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const authRoutes = require('./routes/auth');
-const isAuthenticated = require('./middleware/auth');
+const { isAuthenticated } = require('./middleware/auth');
 
 const app = express();
 
@@ -16,12 +17,14 @@ app.use(session({
 
 app.use(express.static(path.join(__dirname, '../client/public')));
 
+// Middleware to protect API endpoints that require authentication
 app.use('/api/user', isAuthenticated);
 
+// API endpoint to fetch user data
 app.get('/api/user', (req, res) => {
   if (req.session.user) {
-    const { username, email, avatar } = req.session.user;
-    res.json({ username, email, avatar });
+    // Return all user data stored in session
+    res.json(req.session.user);
   } else {
     res.status(401).json({ error: 'Not authenticated' });
   }
