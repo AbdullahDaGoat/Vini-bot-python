@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Authentication Failed</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: { 500: '#8B5CF6', 600: '#7C3AED' },
+            secondary: { 500: '#3B82F6', 600: '#2563EB' },
+          },
+        },
+      },
+    }
+  </script>
 </head>
 <body class="bg-gradient-to-br from-purple-500 to-blue-600 dark:from-purple-900 dark:to-blue-900 min-h-screen flex items-center justify-center p-4">
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full transform hover:scale-105 transition-all duration-300 ease-in-out">
