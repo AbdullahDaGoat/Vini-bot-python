@@ -87,7 +87,7 @@ async function handleCommands(message) {
       // Check all routes
       const routes = ['/api/user', '/auth/discord', '/auth/discord/callback'];
       const results = await Promise.all(routes.map(route => 
-        fetch(`http://localhost:${port}${route}`).then(res => ({route, status: res.status}))
+        fetch(`http://savingshub.cloud:${port}${route}`).then(res => ({route, status: res.status}))
       ));
       
       const allOk = results.every(r => r.status === 200);
