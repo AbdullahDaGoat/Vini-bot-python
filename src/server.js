@@ -152,6 +152,7 @@ app.get('/api/user', (req, res) => {
   res.json(Object.values(authenticatedUsers));
 });
 
+
 // Endpoint to log out a user
 app.post('/api/user/logout', (req, res) => {
   const { userId } = req.body;
