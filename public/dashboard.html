@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Dashboard</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <h1>User Dashboard</h1>
+  <div id="userData"></div>
+  <p>Additonal info can be found at: <a href="/api/user">/api/user</a></p>
+  <button id="acceptBtn">I Accept</button>
+  <button id="rejectBtn">I Do Not Accept</button>
+
+  <script>
+    fetch('/api/user')
+      .then(response => response.json())
+      .then(users => {
+        if (!Array.isArray(users) || users.length === 0) {
+          throw new Error('No users found');
+        }
+
+        // Assume the user ID is passed via query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('userId');
+        const user = users.find(u => u.id === userId);
+
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        const userDataDiv = document.getElementById('userData');
+        userDataDiv.innerHTML = `
+          <h2>User Data</h2>
+          <table>
+            <tr>
+              <td rowspan="12"><img src="${user.avatarPng}" alt="User Avatar" width="100"></td>
+              <th>Username:</th>
+              <td>${user.username}</td>
+            </tr>
+            <tr>
+              <th>ID:</th>
+              <td>${user.id}</td>
+            </tr>
+            <tr>
+              <th>Discriminator:</th>
+              <td>${user.discriminator}</td>
+            </tr>
+            <tr>
+              <th>Email:</th>
+              <td>${user.email || 'N/A'}</td>
+            </tr>
+            <tr>
+              <th>Joined Timestamp:</th>
+              <td>${new Date(user.joinedTimestamp).toLocaleString()}</td>
+            </tr>
+            <tr>
+              <th>Nickname:</th>
+              <td>${user.nickname || 'N/A'}</td>
+            </tr>
+            <tr>
+              <th>Roles:</th>
+              <td>${user.roles}</td>
+            </tr>
+            <tr>
+              <th>Avatar URL:</th>
+              <td>${user.avatarPng}</td>
+            </tr>
+            <tr>
+              <th>Connections:</th>
+              <td>${Array.isArray(user.connections) ? user.connections.map(conn => `${conn.type}: ${conn.name}`).join(', ') : 'N/A'}</td>
+            </tr>
+            <tr>
+              <th>Guilds:</th>
+              <td>${Array.isArray(user.guilds) ? user.guilds.map(guild => guild.name).join(', ') : 'N/A'}</td>
+            </tr>
+            <tr>
+              <th>Nitro Subscriber:</th>
+              <td>${user.nitro}</td>
+            </tr>
+          </table>
+        `;
+      })
+      .catch(error => {
+        console.error('Error fetching user data:', error);
+        document.getElementById('userData').textContent = 'Error loading user data. Please try again.';
+      });
+
+    document.getElementById('acceptBtn').addEventListener('click', () => {
+      window.location.href = 'http://localhost:5173';
+    });
+
+    document.getElementById('rejectBtn').addEventListener('click', () => {
+      fetch('/api/user/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: new URLSearchParams(window.location.search).get('userId') })
+      }).then(() => {
+        window.location.href = 'https://www.google.com';
+      }).catch(error => {
+        console.error('Error logging out:', error);
+        alert('Error logging out. Please try again.');
+      });
+    });
+  </script>
+</body>
+</html>
