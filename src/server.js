@@ -10,7 +10,7 @@ const path = require('path');
 // Load environment variables
 dotenv.config();
 
-const redirect_uri = `http://localhost:3000/auth/discord/callback`;
+const redirect_uri = `https://savingshub.cloud/auth/discord/callback`;
 const client_id = `1256482400066605086`;
 const guild_id = `1256703287550283839`;
 const role_id = `1256735791208726630`;
@@ -21,7 +21,7 @@ const port = process.env.PORT || 3000;
 
 // Middleware setup
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'https://savingshub.watch',
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -39,7 +39,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: false, // set to true if your using https
+    secure: true, // set to true if your using https
     httpOnly: true,
     sameSite: 'lax'
   }
@@ -56,7 +56,7 @@ client.once('ready', () => {
     status: 'online', // online, idle, dnd, invisible
     activities: [
       {
-        name: 'Monitoring the server', // Set the bot's activity name
+        name: 'SavingsHub Security', // Set the bot's activity name
         type: 'WATCHING', // PLAYING, STREAMING, LISTENING, WATCHING
       },
     ],
