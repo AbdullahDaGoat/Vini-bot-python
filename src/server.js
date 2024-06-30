@@ -19,9 +19,30 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware setup
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Add this line to handle preflight requests
+app.options('*', cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+const session = require('express-session');
+
+app.use(session({
+  secret: 'FBD17F49CC4666DFC81BB2334734C',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: false, // set to true if your using https
+    httpOnly: true,
+    sameSite: 'lax'
+  }
+}));
 
 // Discord client setup
 const client = new Client({
@@ -61,12 +82,17 @@ const authenticatedUsers = {};
 // Middleware to check if user is authenticated
 app.use((req, res, next) => {
   const userId = req.query.userId || req.body.userId;
+  if (req.path === '/api/user') {
+    if (userId && authenticatedUsers[userId]) {
+      req.user = authenticatedUsers[userId];
+    }
+    return next();
+  }
   if (userId && authenticatedUsers[userId]) {
     return res.redirect(`/dashboard.html?userId=${userId}`);
   }
   next();
 });
-
 // OAuth2 authentication endpoint
 app.get('/auth/discord', (req, res) => {
   const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;
@@ -147,7 +173,6 @@ app.get('/auth/discord/callback', async (req, res) => {
   }
 });
 
-// Endpoint to get all authenticated users' data
 app.get('/api/user', (req, res) => {
   res.json(Object.values(authenticatedUsers));
 });
