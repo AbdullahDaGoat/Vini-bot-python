@@ -105,23 +105,23 @@ async function handleCommands(message) {
       message.reply('There was an error checking the API status. Please try again later.');
     }
   } else if (message.content === '!Params') {
-    const sampleUser = Object.values(authenticatedUsers)[0];
-    if (sampleUser) {
+    const sampleUser = 1;
+    if (1 == 1) {
       const embed = new EmbedBuilder()
         .setTitle('User Parameters')
-        .setDescription('Here are the parameters returned by /api/user:')
+        .setDescription('Here are the parameters returned by /api/user. Some values are ommited for privacy reasons:')
         .setColor('#0099FF')
         .addFields(
-          { name: 'User ID', value: sampleUser.id },
-          { name: 'Username', value: sampleUser.username },
-          { name: 'Email', value: sampleUser.email || 'N/A' },
-          { name: 'Avatar', value: sampleUser.avatarPng || 'N/A' },
-          { name: 'Joined At', value: new Date(sampleUser.joinedTimestamp).toLocaleString() },
-          { name: 'Nickname', value: sampleUser.nickname || 'N/A' },
-          { name: 'Roles', value: sampleUser.roles || 'N/A' },
-          { name: 'Nitro', value: sampleUser.nitro },
-          { name: 'Connections', value: sampleUser.connections.length.toString() },
-          { name: 'Guilds', value: sampleUser.guilds.length.toString() }
+          { name: 'User ID', value: "Sample User ID" },
+          { name: 'Username', value: "Sample User Name" },
+          { name: 'Email', value: "Sample User Email" },
+          { name: 'Avatar', value: "Sample User Avatar" },
+          { name: 'Joined At', value: "Sample User Joined At" },
+          { name: 'Nickname', value: "Sample User Nickname" },
+          { name: 'Roles', value: "Sample User Roles" },
+          { name: 'Nitro', value: "Sample User Nitro" },
+          { name: 'Connections', value: "Sample User Connections" },
+          { name: 'Guilds', value: "Sample User Guilds" }
         );
       message.reply({ embeds: [embed] });
     } else {
