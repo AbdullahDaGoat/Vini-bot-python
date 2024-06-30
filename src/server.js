@@ -2,9 +2,10 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder  } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
+
 
 // Load environment variables
 dotenv.config();
@@ -51,6 +52,15 @@ const client = new Client({
 
 client.once('ready', () => {
   console.log('Discord bot is ready!');
+  client.user.setPresence({
+    status: 'online', // online, idle, dnd, invisible
+    activities: [
+      {
+        name: 'Monitoring the server', // Set the bot's activity name
+        type: 'WATCHING', // PLAYING, STREAMING, LISTENING, WATCHING
+      },
+    ],
+  });
 });
 
 client.on('error', (error) => {
@@ -65,15 +75,76 @@ client.login(process.env.DISCORD_BOT_TOKEN).catch((error) => {
   console.error('Failed to log in to Discord:', error);
 });
 
-// Handle !test command
-client.on('messageCreate', (message) => {
-  if (message.content === '!test') {
+async function handleCommands(message) {
+  if (message.content === '!CheckBot') {
+    const embed = new EmbedBuilder()
+      .setTitle('Bot Status')
+      .setDescription('Bot is operational!')
+      .setColor('#00FF00');
+    message.reply({ embeds: [embed] });
+  } else if (message.content === '!API') {
     try {
-      message.reply('Bot is operational!');
+      // Check all routes
+      const routes = ['/api/user', '/auth/discord', '/auth/discord/callback'];
+      const results = await Promise.all(routes.map(route => 
+        fetch(`http://localhost:${port}${route}`).then(res => ({route, status: res.status}))
+      ));
+      
+      const allOk = results.every(r => r.status === 200);
+      const statusText = results.map(r => `${r.route}: ${r.status === 200 ? '✅' : '❌'}`).join('\n');
+      
+      const embed = new EmbedBuilder()
+        .setTitle('API Status')
+        .setDescription(allOk ? 'All API routes are working correctly.' : 'There are issues with some API routes.')
+        .setColor(allOk ? '#00FF00' : '#FF0000')
+        .addFields({ name: 'Route Status', value: statusText });
+      
+      message.reply({ embeds: [embed] });
     } catch (error) {
-      console.error('Test command error:', error);
-      message.reply('Bot encountered an error.');
+      console.error('API check error:', error);
+      message.reply('There was an error checking the API status. Please try again later.');
     }
+  } else if (message.content === '!Params') {
+    const sampleUser = Object.values(authenticatedUsers)[0];
+    if (sampleUser) {
+      const embed = new EmbedBuilder()
+        .setTitle('User Parameters')
+        .setDescription('Here are the parameters returned by /api/user:')
+        .setColor('#0099FF')
+        .addFields(
+          { name: 'User ID', value: sampleUser.id },
+          { name: 'Username', value: sampleUser.username },
+          { name: 'Email', value: sampleUser.email || 'N/A' },
+          { name: 'Avatar', value: sampleUser.avatarPng || 'N/A' },
+          { name: 'Joined At', value: new Date(sampleUser.joinedTimestamp).toLocaleString() },
+          { name: 'Nickname', value: sampleUser.nickname || 'N/A' },
+          { name: 'Roles', value: sampleUser.roles || 'N/A' },
+          { name: 'Nitro', value: sampleUser.nitro },
+          { name: 'Connections', value: sampleUser.connections.length.toString() },
+          { name: 'Guilds', value: sampleUser.guilds.length.toString() }
+        );
+      message.reply({ embeds: [embed] });
+    } else {
+      message.reply('No authenticated users found. Unable to display parameters.');
+    }
+  } else if (message.content === '!Help') {
+    const embed = new EmbedBuilder()
+      .setTitle('Available Commands')
+      .setDescription('Here are the available commands:')
+      .setColor('#FFA500')
+      .addFields(
+        { name: '!CheckBot', value: 'Check if the bot is operational' },
+        { name: '!API', value: 'Check the status of API routes' },
+        { name: '!Params', value: 'Display user parameters from /api/user' },
+        { name: '!Help', value: 'Display this help message' }
+      );
+    message.reply({ embeds: [embed] });
+  }
+}
+
+client.on('messageCreate', (message) => {
+  if (!message.author.bot) {
+    handleCommands(message);
   }
 });
 
@@ -93,6 +164,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 // OAuth2 authentication endpoint
 app.get('/auth/discord', (req, res) => {
   const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;
@@ -176,7 +248,6 @@ app.get('/auth/discord/callback', async (req, res) => {
 app.get('/api/user', (req, res) => {
   res.json(Object.values(authenticatedUsers));
 });
-
 
 // Endpoint to log out a user
 app.post('/api/user/logout', (req, res) => {
