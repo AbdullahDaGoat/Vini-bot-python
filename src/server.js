@@ -58,6 +58,15 @@ client.on('messageCreate', (message) => {
 
 const authenticatedUsers = {};
 
+// Middleware to check if user is authenticated
+app.use((req, res, next) => {
+  const userId = req.query.userId || req.body.userId;
+  if (userId && authenticatedUsers[userId]) {
+    return res.redirect(`/dashboard.html?userId=${userId}`);
+  }
+  next();
+});
+
 // OAuth2 authentication endpoint
 app.get('/auth/discord', (req, res) => {
   const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;

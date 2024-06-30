@@ -8,5 +8,21 @@
 <body>
   <h1>Welcome to the Authentication Page</h1>
   <a href="/auth/discord">Login with Discord</a>
+
+  <script>
+    fetch('/api/user')
+      .then(response => response.json())
+      .then(users => {
+        // Check if any user is already authenticated
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('userId');
+        if (userId && users.some(user => user.id === userId)) {
+          window.location.href = `/dashboard.html?userId=${userId}`;
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching user data:', error);
+      });
+  </script>
 </body>
 </html>
