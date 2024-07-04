@@ -1,47 +1,116 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Authentication Failed</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            primary: { 500: '#8B5CF6', 600: '#7C3AED' },
-            secondary: { 500: '#3B82F6', 600: '#2563EB' },
-          },
-        },
-      },
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
     }
-  </script>
+    .animate-matrix {
+      background: linear-gradient(to top, #000000, #003300);
+      background-size: 200% 200%;
+      animation: matrix 15s ease infinite;
+    }
+    @keyframes matrix {
+      0% { background-position: 100% 0%; }
+      50% { background-position: 100% 100%; }
+      100% { background-position: 100% 0%; }
+    }
+    .requirement-item {
+      transition: all 0.3s ease;
+    }
+    .requirement-item:hover {
+      transform: translateX(10px);
+      color: #4F46E5;
+    }
+  </style>
 </head>
-<body class="bg-gradient-to-br from-purple-500 to-blue-600 dark:from-purple-900 dark:to-blue-900 min-h-screen flex items-center justify-center p-4">
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full transform hover:scale-105 transition-all duration-300 ease-in-out">
-    <h1 class="text-3xl font-bold mb-6 text-center text-purple-600 dark:text-purple-400 animate-pulse">Authentication Failed</h1>
-    <p class="text-gray-700 dark:text-gray-300 mb-4">Sorry, we couldn't authenticate you. Please make sure you meet the following requirements:</p>
-    <ul class="list-disc list-inside mb-6 text-gray-600 dark:text-gray-400 space-y-2">
-      <li class="transform hover:translate-x-2 transition-transform duration-200">You are a member of the required Discord server</li>
-      <li class="transform hover:translate-x-2 transition-transform duration-200">You have the necessary role in the server</li>
-    </ul>
-    <a href="/" class="block w-full text-center bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg">
-      Try Again
-    </a>
+<body class="h-full flex items-center justify-center transition-colors duration-300" id="body" style="background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);">
+  <div class="max-w-md w-full mx-auto">
+    <div class="bg-white bg-opacity-70 backdrop-filter backdrop-blur-lg rounded-xl shadow-2xl overflow-hidden transition-colors duration-300" id="card">
+      <div class="px-8 pt-10 pb-8">
+        <h1 class="text-3xl font-bold mb-6 text-center text-purple-600 transition-colors duration-300" id="title">Authentication Failed</h1>
+        <p class="text-gray-700 mb-4 transition-colors duration-300" id="description">Sorry, we couldn't authenticate you. Please make sure you meet the following requirements:</p>
+        <ul class="list-disc list-inside mb-6 text-gray-600 space-y-2 transition-colors duration-300" id="list">
+          <li class="requirement-item">You are a member of the required Discord server</li>
+          <li class="requirement-item">You have the necessary role in the server</li>
+        </ul>
+        <a href="/" class="block w-full text-center bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg" id="tryAgainButton">
+          Try Again
+        </a>
+      </div>
+    </div>
   </div>
-
-  <button id="themeToggle" class="fixed top-4 right-4 bg-white dark:bg-gray-800 p-2 rounded-full shadow-md">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+  <button id="themeToggle" class="fixed top-4 right-4 p-2 rounded-full bg-gray-200 dark:bg-gray-800 transition-colors duration-300">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-800 dark:text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
     </svg>
   </button>
 
   <script>
     const themeToggle = document.getElementById('themeToggle');
+    const body = document.getElementById('body');
+    const card = document.getElementById('card');
+    const title = document.getElementById('title');
+    const description = document.getElementById('description');
+    const list = document.getElementById('list');
+    const tryAgainButton = document.getElementById('tryAgainButton');
+
+    function setTheme(isDark) {
+      if (isDark) {
+        body.classList.add('animate-matrix');
+        body.style.background = 'linear-gradient(to top, #000000, #003300)';
+        card.classList.add('bg-gray-900', 'bg-opacity-70');
+        card.classList.remove('bg-white', 'bg-opacity-70');
+        title.classList.add('text-green-300');
+        title.classList.remove('text-purple-600');
+        description.classList.add('text-green-300');
+        description.classList.remove('text-gray-700');
+        list.classList.add('text-green-400');
+        list.classList.remove('text-gray-600');
+        tryAgainButton.classList.add('from-green-500', 'to-green-700', 'hover:from-green-600', 'hover:to-green-800');
+        tryAgainButton.classList.remove('from-purple-500', 'to-blue-500', 'hover:from-purple-600', 'hover:to-blue-600');
+        document.querySelectorAll('.requirement-item').forEach(item => {
+          item.addEventListener('mouseover', () => item.style.color = '#10B981');
+          item.addEventListener('mouseout', () => item.style.color = '#4ADE80');
+        });
+      } else {
+        body.classList.remove('animate-matrix');
+        body.style.background = 'linear-gradient(to bottom, #0f0c29, #302b63, #24243e)';
+        card.classList.remove('bg-gray-900', 'bg-opacity-70');
+        card.classList.add('bg-white', 'bg-opacity-70');
+        title.classList.remove('text-green-300');
+        title.classList.add('text-purple-600');
+        description.classList.remove('text-green-300');
+        description.classList.add('text-gray-700');
+        list.classList.remove('text-green-400');
+        list.classList.add('text-gray-600');
+        tryAgainButton.classList.remove('from-green-500', 'to-green-700', 'hover:from-green-600', 'hover:to-green-800');
+        tryAgainButton.classList.add('from-purple-500', 'to-blue-500', 'hover:from-purple-600', 'hover:to-blue-600');
+        document.querySelectorAll('.requirement-item').forEach(item => {
+          item.addEventListener('mouseover', () => item.style.color = '#4F46E5');
+          item.addEventListener('mouseout', () => item.style.color = '#4B5563');
+        });
+      }
+    }
+
+    // Check for saved theme preference or use device preference
+    const savedTheme = localStorage.getItem('theme');
+    const devicePrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = savedTheme === 'dark' || (!savedTheme && devicePrefersDark);
+
+    // Set initial theme
+    setTheme(isDark);
+
+    // Theme toggle event listener
     themeToggle.addEventListener('click', () => {
-      document.documentElement.classList.toggle('dark');
+      const isDark = body.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      setTheme(isDark);
     });
   </script>
 </body>

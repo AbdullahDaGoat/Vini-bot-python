@@ -18,24 +18,25 @@
       50% { transform: translatey(-20px); }
       100% { transform: translatey(0px); }
     }
-    .animate-stars {
+    .animate-matrix {
+      background: linear-gradient(to bottom, #000000, #003300);
       background-size: 200% 200%;
-      animation: stars 15s ease infinite;
+      animation: matrix 15s ease infinite;
     }
-    @keyframes stars {
+    @keyframes matrix {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
   </style>
 </head>
-<body class="h-full flex items-center justify-center animate-stars transition-colors duration-300" id="body">
+<body class="h-full flex items-center justify-center animate-stars transition-colors duration-300" id="body" style="background: linear-gradient(to bottom, #e0e0e0, #ffffff);">
   <div class="max-w-md w-full mx-auto">
-    <div class="bg-opacity-70 backdrop-filter backdrop-blur-lg rounded-xl shadow-2xl overflow-hidden transition-colors duration-300" id="card">
+    <div class="bg-white bg-opacity-70 backdrop-filter backdrop-blur-lg rounded-xl shadow-2xl overflow-hidden transition-colors duration-300" id="card">
       <div class="px-8 pt-10 pb-8">
         <div class="text-center mb-8">
-          <h1 class="text-4xl font-bold mb-2 animate-float transition-colors duration-300" id="title">Welcome Back</h1>
-          <p class="transition-colors duration-300" id="subtitle">Sign in to access your account</p>
+          <h1 class="text-4xl font-bold mb-2 animate-float text-purple-600 transition-colors duration-300" id="title">Welcome Back</h1>
+          <p class="text-indigo-600 transition-colors duration-300" id="subtitle">Sign in to access your account</p>
         </div>
         <a href="/auth/discord" class="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg text-center transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
           <svg class="w-6 h-6 inline-block mr-2" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -52,7 +53,7 @@
         </a>
       </div>
     </div>
-    <p class="mt-8 text-center text-sm transition-colors duration-300" id="footer">
+    <p class="mt-8 text-center text-sm text-indigo-600 transition-colors duration-300" id="footer">
       &copy; 2023 Your Company. All rights reserved.
     </p>
   </div>
@@ -72,26 +73,28 @@
 
     function setTheme(isDark) {
       if (isDark) {
-        body.classList.add('dark');
-        body.style.background = 'linear-gradient(to bottom, #0f0c29, #302b63, #24243e)';
+        body.classList.add('dark', 'animate-matrix');
+        body.classList.remove('animate-stars');
+        body.style.background = 'linear-gradient(to bottom, #000000, #003300)';
         card.classList.add('bg-gray-900');
         card.classList.remove('bg-white');
-        title.classList.add('text-purple-300');
+        title.classList.add('text-green-300');
         title.classList.remove('text-purple-600');
-        subtitle.classList.add('text-indigo-300');
+        subtitle.classList.add('text-green-400');
         subtitle.classList.remove('text-indigo-600');
-        footer.classList.add('text-indigo-200');
+        footer.classList.add('text-green-400');
         footer.classList.remove('text-indigo-600');
       } else {
-        body.classList.remove('dark');
-        body.style.background = 'linear-gradient(to bottom, #e0e0e0, #ffffff)';
+        body.classList.remove('dark', 'animate-matrix');
+        body.classList.add('animate-stars');
+        body.style.background = 'linear-gradient(to bottom, #0f0c29, #302b63, #24243e)';
         card.classList.remove('bg-gray-900');
         card.classList.add('bg-white');
-        title.classList.remove('text-purple-300');
+        title.classList.remove('text-green-300');
         title.classList.add('text-purple-600');
-        subtitle.classList.remove('text-indigo-300');
+        subtitle.classList.remove('text-green-400');
         subtitle.classList.add('text-indigo-600');
-        footer.classList.remove('text-indigo-200');
+        footer.classList.remove('text-green-400');
         footer.classList.add('text-indigo-600');
       }
     }

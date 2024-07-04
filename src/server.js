@@ -2,19 +2,21 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { Client, GatewayIntentBits, EmbedBuilder  } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, InteractionType } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
-
+const session = require('express-session');
 
 // Load environment variables
 dotenv.config();
 
 const redirect_uri = `https://savingshub.cloud/auth/discord/callback`;
 const client_id = `1256482400066605086`;
-const guild_id = `1256703287550283839`;
-const role_id = `1256735791208726630`;
-const node_env = `production`;
+
+// Hardcoded variables to change
+const guild_id = `1214795230537318410`;
+const role_id = `1243474841336545303`;
+const log_channel = `1257883631368671364`; // Replace with your log channel ID
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -32,14 +34,12 @@ app.options('*', cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-const session = require('express-session');
-
 app.use(session({
-  secret: 'FBD17F49CC4666DFC81BB2334734C',
+  secret: process.env.SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: true, // set to true if your using https
+    secure: false, 
     httpOnly: true,
     sameSite: 'lax'
   }
@@ -53,7 +53,7 @@ const client = new Client({
 client.once('ready', () => {
   console.log('Discord bot is ready!');
   client.user.setPresence({
-    status: 'online', // online, idle, dnd, invisible
+    status: 'dnd', // online, idle, dnd, invisible
     activities: [
       {
         name: 'SavingsHub Security', // Set the bot's activity name
@@ -65,24 +65,46 @@ client.once('ready', () => {
 
 client.on('error', (error) => {
   console.error('Discord client error:', error);
+  logError('Discord client error', error);
 });
 
 client.on('shardError', (error, shardId) => {
   console.error(`WebSocket shard error on shard ${shardId}:`, error);
+  logError(`WebSocket shard error on shard ${shardId}`, error);
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN).catch((error) => {
   console.error('Failed to log in to Discord:', error);
+  logError('Failed to log in to Discord', error);
 });
 
-async function handleCommands(message) {
-  if (message.content === '!CheckBot') {
+async function logError(title, error) {
+  const channel = client.channels.cache.get(log_channel);
+  if (channel) {
+    const embed = new EmbedBuilder()
+      .setTitle(title)
+      .setDescription(`\`\`\`${error.stack}\`\`\``)
+      .setColor('#FF0000')
+      .setTimestamp();
+    channel.send({ embeds: [embed] });
+  } else {
+    console.error('Log channel not found:', log_channel);
+  }
+}
+
+
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isCommand()) return;
+
+  const { commandName } = interaction;
+
+  if (commandName === 'checkbot') {
     const embed = new EmbedBuilder()
       .setTitle('Bot Status')
       .setDescription('Bot is operational!')
       .setColor('#00FF00');
-    message.reply({ embeds: [embed] });
-  } else if (message.content === '!API') {
+    await interaction.reply({ embeds: [embed] });
+  } else if (commandName === 'api') {
     try {
       // Check all routes
       const routes = ['/api/user', '/auth/discord', '/auth/discord/callback'];
@@ -99,18 +121,19 @@ async function handleCommands(message) {
         .setColor(allOk ? '#00FF00' : '#FF0000')
         .addFields({ name: 'Route Status', value: statusText });
       
-      message.reply({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed] });
     } catch (error) {
       console.error('API check error:', error);
-      message.reply('There was an error checking the API status. Please try again later.');
+      await interaction.reply('There was an error checking the API status. Please try again later.');
+      logError('API check error', error);
     }
-  } else if (message.content === '!Params') {
+  } else if (commandName === 'params') {
     const sampleUser = 1;
-    if (1 == 1) {
+    if (sampleUser) {
       const embed = new EmbedBuilder()
         .setTitle('User Parameters')
-        .setDescription('Here are the parameters returned by /api/user. Some values are ommited for privacy reasons:')
-        .setColor('#0099FF')
+        .setDescription('Here are the parameters returned by /api/user. Some values are omitted for privacy reasons:')
+        .setColor('#00FF00') // Hacker-like green color
         .addFields(
           { name: 'User ID', value: "Sample User ID" },
           { name: 'Username', value: "Sample User Name" },
@@ -123,28 +146,22 @@ async function handleCommands(message) {
           { name: 'Connections', value: "Sample User Connections" },
           { name: 'Guilds', value: "Sample User Guilds" }
         );
-      message.reply({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed] });
     } else {
-      message.reply('No authenticated users found. Unable to display parameters.');
+      await interaction.reply('No authenticated users found. Unable to display parameters.');
     }
-  } else if (message.content === '!Help') {
+  } else if (commandName === 'help') {
     const embed = new EmbedBuilder()
       .setTitle('Available Commands')
       .setDescription('Here are the available commands:')
       .setColor('#FFA500')
       .addFields(
-        { name: '!CheckBot', value: 'Check if the bot is operational' },
-        { name: '!API', value: 'Check the status of API routes' },
-        { name: '!Params', value: 'Display user parameters from /api/user' },
-        { name: '!Help', value: 'Display this help message' }
+        { name: '/checkbot', value: 'Check if the bot is operational' },
+        { name: '/api', value: 'Check the status of API routes' },
+        { name: '/params', value: 'Display user parameters from /api/user' },
+        { name: '/help', value: 'Display this help message' }
       );
-    message.reply({ embeds: [embed] });
-  }
-}
-
-client.on('messageCreate', (message) => {
-  if (!message.author.bot) {
-    handleCommands(message);
+    await interaction.reply({ embeds: [embed] });
   }
 });
 
@@ -153,6 +170,9 @@ const authenticatedUsers = {};
 // Middleware to check if user is authenticated
 app.use((req, res, next) => {
   const userId = req.query.userId || req.body.userId;
+  if (req.session.user) {
+    return res.redirect(`/dashboard.html?userId=${req.session.user.id}`);
+  }
   if (req.path === '/api/user') {
     if (userId && authenticatedUsers[userId]) {
       req.user = authenticatedUsers[userId];
@@ -237,11 +257,13 @@ app.get('/auth/discord/callback', async (req, res) => {
     userData.nitro = userData.premium_type ? 'Yes' : 'No';
 
     authenticatedUsers[userData.id] = userData;
+    req.session.user = userData;
 
     res.redirect(`/dashboard.html?userId=${userData.id}`);
   } catch (error) {
     console.error('Authentication error:', error);
     res.redirect('/auth-failed.html');
+    logError('Authentication error', error);
   }
 });
 
@@ -253,6 +275,7 @@ app.get('/api/user', (req, res) => {
 app.post('/api/user/logout', (req, res) => {
   const { userId } = req.body;
   delete authenticatedUsers[userId];
+  req.session.destroy();
   res.json({ success: true });
 });
 
