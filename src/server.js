@@ -266,7 +266,7 @@ app.get('/api/user', (req, res) => {
     return res.json(req.session.user);
   }
   if (userId && authenticatedUsers[userId]) {
-    return res.json(userId);
+    return res.json(authenticatedUsers[userId]);
   }
   res.status(401).json({ error: 'Unauthorized' });
 });
