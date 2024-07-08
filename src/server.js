@@ -261,12 +261,12 @@ app.get('/auth/discord/callback', async (req, res) => {
 
 // API endpoint to get user information
 app.get('/api/user', (req, res) => {
-  const userId = req.query.userId;
+  const userId = req.query.userId || req.body.userId;
   if (req.session.user) {
     return res.json(req.session.user);
   }
   if (userId && authenticatedUsers[userId]) {
-    return res.json(authenticatedUsers[userId]);
+    return res.json(userId);
   }
   res.status(401).json({ error: 'Unauthorized' });
 });
