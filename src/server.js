@@ -20,7 +20,7 @@ const role_id = `1243474841336545303`;
 const log_channel = `1257883631368671364`; // Replace with your log channel ID
 
 const app = express();
-const port = process.env.PORT || 80; // Use PORT provided in environment or default to 80
+const port =  443; 
 
 // Middleware setup
 app.use(cors({
@@ -107,7 +107,7 @@ client.on('interactionCreate', async (interaction) => {
       // Check all routes
       const routes = ['/api/user', '/auth/discord', '/auth/discord/callback'];
       const results = await Promise.all(routes.map(route => 
-        fetch(`http://savingshub.cloud:${port}${route}`).then(res => ({route, status: res.status}))
+        fetch(`https://savingshub.cloud:${port}${route}`).then(res => ({route, status: res.status}))
       ));
       
       const allOk = results.every(r => r.status === 200);
