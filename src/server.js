@@ -6,6 +6,7 @@ const { Client, GatewayIntentBits, EmbedBuilder, InteractionType } = require('di
 const fetch = require('node-fetch');
 const path = require('path');
 const session = require('express-session');
+const nodemailer = require('nodemailer');
 
 // Load environment variables
 dotenv.config();
@@ -19,7 +20,7 @@ const role_id = `1243474841336545303`;
 const log_channel = `1257883631368671364`; // Replace with your log channel ID
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 8080;
 
 // Middleware setup
 app.use(cors({
@@ -288,3 +289,67 @@ app.get('*', (req, res) => {
 app.listen(port, () => {
   console.log(`Auth server is running on port ${port}`);
 });
+
+
+
+const API_KEY = 'a3bab675-7dbd-4692-9593-3026cf18d5a5'; // Replace with your actual API key
+
+app.use(express.json());
+
+app.post('/send', (req, res) => {
+  const { key, ...formData } = req.body;
+
+  // Verify the API key
+  if (key !== API_KEY) {
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
+
+  // Handle the form data and send the email
+  sendEmail(formData)
+    .then(() => {
+      res.json({ message: 'Email sent successfully' });
+    })
+    .catch((error) => {
+      console.error('Error sending email:', error);
+      res.status(500).json({ error: 'Error sending email' });
+    });
+});
+
+function sendEmail(data) {
+  return new Promise((resolve, reject) => {
+    const transporter = nodemailer.createTransport({
+      // Configure your email service details here
+      service: 'gmail',
+      auth: {
+        user: 'abdullahaviator13@gmail.com',
+        pass: 'Mississauga9241$'
+      }
+    });
+
+    const mailOptions = {
+      from: 'LegaciesOFMenWebsite@LOM.com',
+      to: 'abdullahaviator13@gmail.com',
+      subject: data.subject,
+      text: `
+        First Name: ${data.firstName}
+        Last Name: ${data.lastName}
+        Email: ${data.email}
+        Phone: ${data.phone}
+        Gender: ${data.gender}
+        Age: ${data.age}
+        Username: ${data.username}
+        Subject: ${data.subject}
+        Message: ${data.message}
+        User Info: ${data.userInfo}
+      `
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(info);
+      }
+    });
+  });
+}
