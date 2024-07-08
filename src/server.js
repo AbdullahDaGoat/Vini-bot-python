@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
-const cookieSession = require('cookie-session');
+const session = require('express-session');
 // Load environment variables
 dotenv.config();
 
@@ -33,13 +33,15 @@ app.options('*', cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-app.use(cookieSession({
-  name: 'session',
-  keys: [process.env.SECRET], // secret keys used to sign the cookie
-  maxAge: 1000 * 60 * 15, // 15 minutes
-  secure: process.env.NODE_ENV === 'production', // ensure secure cookies in production
-  httpOnly: true,
-  sameSite: 'lax'
+app.use(session({
+  secret: process.env.SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: false, 
+    httpOnly: true,
+    sameSite: 'lax'
+  }
 }));
 
 // Discord client setup
