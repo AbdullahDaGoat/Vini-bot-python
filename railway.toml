@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm run build"
+
+[start]
+command = "pnpm start"
+
+[variables]
+NIXPACKS_PATH = "/app/node_modules/.bin:$PATH"
