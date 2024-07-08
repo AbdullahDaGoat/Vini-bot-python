@@ -163,19 +163,17 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
+// Authenticated users storage
 const authenticatedUsers = {};
 
-// Middleware to check if user is authenticated
 // Middleware to check if user is authenticated
 app.use((req, res, next) => {
   const userId = req.query.userId || req.body.userId;
   if (req.session.user) {
     return res.redirect(`/dashboard.html?userId=${req.session.user.id}`);
   }
-  if (req.path !== '/api/user') {
-    if (userId && authenticatedUsers[userId]) {
-      return res.redirect(`/dashboard.html?userId=${userId}`);
-    }
+  if (userId && authenticatedUsers[userId]) {
+    return res.redirect(`/dashboard.html?userId=${userId}`);
   }
   next();
 });
@@ -249,6 +247,7 @@ app.get('/auth/discord/callback', async (req, res) => {
       guilds: client.guilds.cache.map(guild => ({ id: guild.id, name: guild.name })),
     };
 
+    // Store user data
     authenticatedUsers[user.id] = user;
 
     req.session.user = user;
@@ -263,6 +262,9 @@ app.get('/auth/discord/callback', async (req, res) => {
 // API endpoint to get user information
 app.get('/api/user', (req, res) => {
   const userId = req.query.userId;
+  if (req.session.user) {
+    return res.json(req.session.user);
+  }
   if (userId && authenticatedUsers[userId]) {
     return res.json(authenticatedUsers[userId]);
   }
@@ -272,6 +274,7 @@ app.get('/api/user', (req, res) => {
 // Serve static files for the maintenance page
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Start the server
 app.listen(port, '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`);
 });
