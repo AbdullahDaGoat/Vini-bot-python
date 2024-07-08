@@ -166,19 +166,16 @@ client.on('interactionCreate', async (interaction) => {
 const authenticatedUsers = {};
 
 // Middleware to check if user is authenticated
+// Middleware to check if user is authenticated
 app.use((req, res, next) => {
   const userId = req.query.userId || req.body.userId;
   if (req.session.user) {
     return res.redirect(`/dashboard.html?userId=${req.session.user.id}`);
   }
-  if (req.path === '/api/user') {
+  if (req.path !== '/api/user') {
     if (userId && authenticatedUsers[userId]) {
-      req.user = authenticatedUsers[userId];
+      return res.redirect(`/dashboard.html?userId=${userId}`);
     }
-    return next();
-  }
-  if (userId && authenticatedUsers[userId]) {
-    return res.redirect(`/dashboard.html?userId=${userId}`);
   }
   next();
 });
