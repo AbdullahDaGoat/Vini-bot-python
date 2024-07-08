@@ -19,6 +19,7 @@
   "author": "Vini",
   "license": "ISC",
   "dependencies": {
+    "cookie-session": "^2.1.0",
     "cors": "^2.8.5",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
