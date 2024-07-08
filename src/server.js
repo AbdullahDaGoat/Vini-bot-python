@@ -20,7 +20,7 @@ const role_id = `1243474841336545303`;
 const log_channel = `1257883631368671364`; // Replace with your log channel ID
 
 const app = express();
-const port = 8080;
+const port = 80;
 
 // Middleware setup
 app.use(cors({
