@@ -6,8 +6,6 @@ const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
 const cookieSession = require('cookie-session');
-const nodemailer = require('nodemailer');
-
 // Load environment variables
 dotenv.config();
 
@@ -96,15 +94,15 @@ client.on('interactionCreate', async (interaction) => {
 
   const { commandName } = interaction;
 
-  if (commandName === 'checkbot') {
-    const embed = new EmbedBuilder()
-      .setTitle('Bot Status')
-      .setDescription('Bot is operational!')
-      .setColor('#00FF00');
-    await interaction.reply({ embeds: [embed] });
-  } else if (commandName === 'api') {
-    try {
-      // Check all routes
+  try {
+    if (commandName === 'checkbot') {
+      const embed = new EmbedBuilder()
+        .setTitle('Bot Status')
+        .setDescription('Bot is operational!')
+        .setColor('#00FF00');
+      await interaction.reply({ embeds: [embed] });
+    } else if (commandName === 'api') {
+      await interaction.deferReply(); // Defer reply to buy time for API checks
       const routes = ['/api/user', '/auth/discord', '/auth/discord/callback'];
       const results = await Promise.all(routes.map(route => 
         fetch(`http://savingshub.cloud:${port}${route}`).then(res => ({route, status: res.status}))
@@ -119,47 +117,51 @@ client.on('interactionCreate', async (interaction) => {
         .setColor(allOk ? '#00FF00' : '#FF0000')
         .addFields({ name: 'Route Status', value: statusText });
       
-      await interaction.reply({ embeds: [embed] });
-    } catch (error) {
-      console.error('API check error:', error);
-      await interaction.reply('There was an error checking the API status. Please try again later.');
-      logError('API check error', error);
-    }
-  } else if (commandName === 'params') {
-    const sampleUser = 1;
-    if (sampleUser) {
+      await interaction.followUp({ embeds: [embed] });
+    } else if (commandName === 'params') {
+      const sampleUser = 1; // Replace with actual user fetch logic
+      if (sampleUser) {
+        const embed = new EmbedBuilder()
+          .setTitle('User Parameters')
+          .setDescription('Here are the parameters returned by /api/user. Some values are omitted for privacy reasons:')
+          .setColor('#00FF00') // Hacker-like green color
+          .addFields(
+            { name: 'User ID', value: "Sample User ID" },
+            { name: 'Username', value: "Sample User Name" },
+            { name: 'Email', value: "Sample User Email" },
+            { name: 'Avatar', value: "Sample User Avatar" },
+            { name: 'Joined At', value: "Sample User Joined At" },
+            { name: 'Nickname', value: "Sample User Nickname" },
+            { name: 'Roles', value: "Sample User Roles" },
+            { name: 'Nitro', value: "Sample User Nitro" },
+            { name: 'Connections', value: "Sample User Connections" },
+            { name: 'Guilds', value: "Sample User Guilds" }
+          );
+        await interaction.reply({ embeds: [embed] });
+      } else {
+        await interaction.reply('No authenticated users found. Unable to display parameters.');
+      }
+    } else if (commandName === 'help') {
       const embed = new EmbedBuilder()
-        .setTitle('User Parameters')
-        .setDescription('Here are the parameters returned by /api/user. Some values are omitted for privacy reasons:')
-        .setColor('#00FF00') // Hacker-like green color
+        .setTitle('Available Commands')
+        .setDescription('Here are the available commands:')
+        .setColor('#FFA500')
         .addFields(
-          { name: 'User ID', value: "Sample User ID" },
-          { name: 'Username', value: "Sample User Name" },
-          { name: 'Email', value: "Sample User Email" },
-          { name: 'Avatar', value: "Sample User Avatar" },
-          { name: 'Joined At', value: "Sample User Joined At" },
-          { name: 'Nickname', value: "Sample User Nickname" },
-          { name: 'Roles', value: "Sample User Roles" },
-          { name: 'Nitro', value: "Sample User Nitro" },
-          { name: 'Connections', value: "Sample User Connections" },
-          { name: 'Guilds', value: "Sample User Guilds" }
+          { name: '/checkbot', value: 'Check if the bot is operational' },
+          { name: '/api', value: 'Check the status of API routes' },
+          { name: '/params', value: 'Display user parameters from /api/user' },
+          { name: '/help', value: 'Display this help message' }
         );
       await interaction.reply({ embeds: [embed] });
-    } else {
-      await interaction.reply('No authenticated users found. Unable to display parameters.');
     }
-  } else if (commandName === 'help') {
-    const embed = new EmbedBuilder()
-      .setTitle('Available Commands')
-      .setDescription('Here are the available commands:')
-      .setColor('#FFA500')
-      .addFields(
-        { name: '/checkbot', value: 'Check if the bot is operational' },
-        { name: '/api', value: 'Check the status of API routes' },
-        { name: '/params', value: 'Display user parameters from /api/user' },
-        { name: '/help', value: 'Display this help message' }
-      );
-    await interaction.reply({ embeds: [embed] });
+  } catch (error) {
+    console.error('Interaction handling error:', error);
+    if (!interaction.replied) {
+      await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+    } else {
+      await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+    }
+    logError('Interaction handling error', error);
   }
 });
 
