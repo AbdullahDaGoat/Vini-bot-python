@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { Client, GatewayIntentBits, EmbedBuilder, InteractionType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
 const session = require('express-session');
@@ -20,7 +20,7 @@ const role_id = `1243474841336545303`;
 const log_channel = `1257883631368671364`; // Replace with your log channel ID
 
 const app = express();
-const port = 80;
+const port = process.env.PORT || 80; // Use PORT provided in environment or default to 80
 
 // Middleware setup
 app.use(cors({
@@ -92,7 +92,6 @@ async function logError(title, error) {
     console.error('Log channel not found:', log_channel);
   }
 }
-
 
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
@@ -240,116 +239,44 @@ app.get('/auth/discord/callback', async (req, res) => {
     const connectionsResponse = await fetch('https://discord.com/api/users/@me/connections', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
+    const connections = await connectionsResponse.json();
 
-    const connectionsData = await connectionsResponse.json();
-
-    const userGuildsResponse = await fetch('https://discord.com/api/users/@me/guilds', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
-    });
-
-    const userGuildsData = await userGuildsResponse.json();
-
-    userData.avatarPng = `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`;
-    userData.joinedTimestamp = member.joinedTimestamp;
-    userData.nickname = member.nickname;
-    userData.roles = member.roles.cache.map(role => role.name).join(', ');
-    userData.connections = connectionsData;
-    userData.guilds = userGuildsData;
-    userData.nitro = userData.premium_type ? 'Yes' : 'No';
-
-    authenticatedUsers[userData.id] = userData;
-    req.session.user = userData;
-
-    res.redirect(`/dashboard.html?userId=${userData.id}`);
-  } catch (error) {
-    console.error('Authentication error:', error);
-    res.redirect('/auth-failed.html');
-    logError('Authentication error', error);
-  }
-});
-
-app.get('/api/user', (req, res) => {
-  res.json(Object.values(authenticatedUsers));
-});
-
-// Endpoint to log out a user
-app.post('/api/user/logout', (req, res) => {
-  const { userId } = req.body;
-  delete authenticatedUsers[userId];
-  req.session.destroy();
-  res.json({ success: true });
-});
-
-// Serve static files
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Start the server
-app.listen(port, () => {
-  console.log(`Auth server is running on port ${port}`);
-});
-
-
-
-const API_KEY = 'a3bab675-7dbd-4692-9593-3026cf18d5a5'; // Replace with your actual API key
-
-app.use(express.json());
-
-app.post('/send', (req, res) => {
-  const { key, ...formData } = req.body;
-
-  // Verify the API key
-  if (key !== API_KEY) {
-    return res.status(401).json({ error: 'Invalid API key' });
-  }
-
-  // Handle the form data and send the email
-  sendEmail(formData)
-    .then(() => {
-      res.json({ message: 'Email sent successfully' });
-    })
-    .catch((error) => {
-      console.error('Error sending email:', error);
-      res.status(500).json({ error: 'Error sending email' });
-    });
-});
-
-function sendEmail(data) {
-  return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      // Configure your email service details here
-      service: 'gmail',
-      auth: {
-        user: 'abdullahaviator13@gmail.com',
-        pass: 'Mississauga9241$'
-      }
-    });
-
-    const mailOptions = {
-      from: 'LegaciesOFMenWebsite@LOM.com',
-      to: 'abdullahaviator13@gmail.com',
-      subject: data.subject,
-      text: `
-        First Name: ${data.firstName}
-        Last Name: ${data.lastName}
-        Email: ${data.email}
-        Phone: ${data.phone}
-        Gender: ${data.gender}
-        Age: ${data.age}
-        Username: ${data.username}
-        Subject: ${data.subject}
-        Message: ${data.message}
-        User Info: ${data.userInfo}
-      `
+    const user = {
+      id: userData.id,
+      username: userData.username,
+      email: userData.email,
+      avatar: userData.avatar,
+      joinedAt: member.joinedAt,
+      nickname: member.nickname,
+      roles: member.roles.cache.map(role => role.name),
+      nitro: userData.premium_type !== undefined,
+      connections: connections.map(conn => conn.type),
+      guilds: client.guilds.cache.map(guild => ({ id: guild.id, name: guild.name })),
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(info);
-      }
-    });
-  });
-}
+    authenticatedUsers[user.id] = user;
+
+    req.session.user = user;
+
+    res.redirect(`/dashboard.html?userId=${user.id}`);
+  } catch (error) {
+    console.error('OAuth2 callback error:', error);
+    res.redirect('/auth-failed.html');
+  }
+});
+
+// API endpoint to get user information
+app.get('/api/user', (req, res) => {
+  const userId = req.query.userId;
+  if (userId && authenticatedUsers[userId]) {
+    return res.json(authenticatedUsers[userId]);
+  }
+  res.status(401).json({ error: 'Unauthorized' });
+});
+
+// Serve static files for the maintenance page
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server is running on port ${port}`);
+});
