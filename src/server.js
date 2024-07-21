@@ -24,9 +24,9 @@ app.use(cookieSession({
   name: 'session',
   keys: [process.env.SECRET_KEY], // secret keys used to sign the cookie
   maxAge: 1000 * 60 * 60 * 24, // 24 hours
-  secure: process.env.NODE_ENV === 'production',
+  secure: true,
   httpOnly: true,
-  sameSite: 'lax'
+  sameSite: 'None'
 }));
 
 // Discord client setup
