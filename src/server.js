@@ -7,7 +7,7 @@ const path = require('path');
 const cookieSession = require('cookie-session');
 
 const app = express();
-const port = process.env.PORT || 443; 
+const port = process.env.PORT || 443;
 
 // Middleware setup
 app.use(cors({
@@ -61,14 +61,14 @@ client.on('interactionCreate', async (interaction) => {
 
   const { commandName } = interaction;
 
-  if (commandName === 'checkbot') {
-    const embed = new EmbedBuilder()
-      .setTitle('Bot Status')
-      .setDescription('Bot is operational!')
-      .setColor('#00FF00');
-    await interaction.reply({ embeds: [embed] });
-  } else if (commandName === 'api') {
-    try {
+  try {
+    if (commandName === 'checkbot') {
+      const embed = new EmbedBuilder()
+        .setTitle('Bot Status')
+        .setDescription('Bot is operational!')
+        .setColor('#00FF00');
+      await interaction.reply({ embeds: [embed] });
+    } else if (commandName === 'api') {
       const routes = ['/api/user', '/auth/discord', '/auth/discord/callback'];
       const results = await Promise.all(routes.map(route => 
         fetch(`https://savingshub.cloud:${port}${route}`).then(res => ({ route, status: res.status }))
@@ -84,41 +84,45 @@ client.on('interactionCreate', async (interaction) => {
         .addFields({ name: 'Route Status', value: statusText });
 
       await interaction.reply({ embeds: [embed] });
-    } catch (error) {
-      console.error('API check error:', error);
-      await interaction.reply('There was an error checking the API status. Please try again later.');
-      logError('API check error', error);
+    } else if (commandName === 'params') {
+      if (!req.session.user) {
+        return await interaction.reply('No user data available. Please log in.');
+      }
+      const user = req.session.user;
+      const embed = new EmbedBuilder()
+        .setTitle('User Parameters')
+        .setDescription('Here are the parameters returned by /api/user:')
+        .setColor('#00FF00')
+        .addFields(
+          { name: 'User ID', value: user.id },
+          { name: 'Username', value: user.username },
+          { name: 'Email', value: user.email },
+          { name: 'Avatar', value: user.avatar },
+          { name: 'Joined At', value: user.joinedAt.toString() },
+          { name: 'Nickname', value: user.nickname || 'N/A' },
+          { name: 'Roles', value: user.roles.join(', ') || 'None' },
+          { name: 'Nitro', value: user.nitro ? 'Yes' : 'No' },
+          { name: 'Connections', value: user.connections || 'N/A' },
+          { name: 'Guilds', value: user.guilds.map(g => g.name).join(', ') || 'None' }
+        );
+      await interaction.reply({ embeds: [embed] });
+    } else if (commandName === 'help') {
+      const embed = new EmbedBuilder()
+        .setTitle('Available Commands')
+        .setDescription('Here are the available commands:')
+        .setColor('#FFA500')
+        .addFields(
+          { name: '/checkbot', value: 'Check if the bot is operational' },
+          { name: '/api', value: 'Check the status of API routes' },
+          { name: '/params', value: 'Display user parameters from /api/user' },
+          { name: '/help', value: 'Display this help message' }
+        );
+      await interaction.reply({ embeds: [embed] });
     }
-  } else if (commandName === 'params') {
-    const embed = new EmbedBuilder()
-      .setTitle('User Parameters')
-      .setDescription('Here are the parameters returned by /api/user:')
-      .setColor('#00FF00')
-      .addFields(
-        { name: 'User ID', value: 'Sample User ID' },
-        { name: 'Username', value: 'Sample User Name' },
-        { name: 'Email', value: 'Sample User Email' },
-        { name: 'Avatar', value: 'Sample User Avatar' },
-        { name: 'Joined At', value: 'Sample User Joined At' },
-        { name: 'Nickname', value: 'Sample User Nickname' },
-        { name: 'Roles', value: 'Sample User Roles' },
-        { name: 'Nitro', value: 'Sample User Nitro' },
-        { name: 'Connections', value: 'Sample User Connections' },
-        { name: 'Guilds', value: 'Sample User Guilds' }
-      );
-    await interaction.reply({ embeds: [embed] });
-  } else if (commandName === 'help') {
-    const embed = new EmbedBuilder()
-      .setTitle('Available Commands')
-      .setDescription('Here are the available commands:')
-      .setColor('#FFA500')
-      .addFields(
-        { name: '/checkbot', value: 'Check if the bot is operational' },
-        { name: '/api', value: 'Check the status of API routes' },
-        { name: '/params', value: 'Display user parameters from /api/user' },
-        { name: '/help', value: 'Display this help message' }
-      );
-    await interaction.reply({ embeds: [embed] });
+  } catch (error) {
+    console.error('Interaction error:', error);
+    await interaction.reply('An error occurred while processing your command.');
+    logError('Interaction error', error);
   }
 });
 
@@ -149,15 +153,19 @@ app.get('/auth/discord/callback', async (req, res) => {
       }),
     });
 
+    if (!tokenResponse.ok) throw new Error('Token response failed');
+
     const tokenData = await tokenResponse.json();
     const userResponse = await fetch('https://discord.com/api/users/@me', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
 
+    if (!userResponse.ok) throw new Error('User response failed');
+
     const userData = await userResponse.json();
     const guild = client.guilds.cache.get(process.env.GUILD_ID);
     const member = await guild.members.fetch(userData.id);
-    
+
     if (!member || !member.roles.cache.has(process.env.ROLE_ID)) {
       return res.redirect('/auth-failed.html');
     }
@@ -180,6 +188,7 @@ app.get('/auth/discord/callback', async (req, res) => {
   } catch (error) {
     console.error('OAuth2 callback error:', error);
     res.redirect('/auth-failed.html');
+    logError('OAuth2 callback error', error);
   }
 });
 
