@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMDB Movie Fetcher</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .movie-card:hover .movie-details {
+            opacity: 1;
+            z-index: 10;
+        }
+        .movie-card .movie-details {
+            transition: opacity 0.3s;
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .movie-card:hover .movie-poster {
+            filter: blur(5px);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <div class="container mx-auto p-4">
+        <div class="flex justify-between items-center mb-4">
+            <input type="text" id="search-bar" placeholder="Search for movies or TV shows..." class="w-1/2 p-2 rounded bg-gray-800 text-white">
+            <div>
+                <button id="download-ids" class="bg-blue-500 p-2 rounded">Download IDs</button>
+                <button id="saved-tab" class="bg-green-500 p-2 rounded">Saved</button>
+            </div>
+        </div>
+        <div id="movie-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    </div>
+
+    <script>
+        const TMDB_API_KEY = '5b9790d9305dca8713b9a0afad42ea8d';
+        const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+        const IMG_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+        const sources = [
+            { name: 'Rogers', logo: 'https://upload.wikimedia.org/wikipedia/commons/3/3d/Rogers_logo.svg' },
+            { name: 'Bell Media', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Bell_Media_logo.svg' },
+            { name: 'Virgin Exclusive', logo: 'https://upload.wikimedia.org/wikipedia/commons/6/6a/Virgin_logo.svg' },
+            { name: 'Echo Média', logo: 'https://upload.wikimedia.org/wikipedia/commons/8/86/Echo_Media_logo.png' },
+            { name: 'Télévision de Radio-Canada', logo: 'https://upload.wikimedia.org/wikipedia/commons/d/df/Television_de_Radio-Canada_logo.png' },
+            { name: 'Télé-Québec', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/0a/T%C3%A9l%C3%A9-Qu%C3%A9bec_logo.svg' }
+        ];
+
+        let savedMovies = JSON.parse(localStorage.getItem('savedMovies')) || [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMovies();
+
+            document.getElementById('search-bar').addEventListener('input', (e) => {
+                const query = e.target.value;
+                if (query.length > 2) {
+                    searchMovies(query);
+                } else {
+                    fetchMovies();
+                }
+            });
+
+            document.getElementById('download-ids').addEventListener('click', downloadIds);
+            document.getElementById('saved-tab').addEventListener('click', showSaved);
+        });
+
+        function fetchMovies() {
+    const sourcePromises = sources.map(source => 
+        fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_companies=${source.name}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // Log the raw response
+                return data.results || [];
+            })
+    );
+
+    const tvSourcePromises = sources.map(source =>
+        fetch(`${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_companies=${source.name}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // Log the raw response
+                return data.results || [];
+            })
+    );
+
+    Promise.all([...sourcePromises, ...tvSourcePromises])
+        .then(sourceResults => {
+            const movies = sourceResults.flat();
+            console.log(movies); // Log the combined results
+            fetchReleaseCountries(movies, false);
+        });
+}
+
+        function searchMovies(query) {
+            const searchPromises = [
+                fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => data.results || []),
+
+                fetch(`${TMDB_BASE_URL}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => data.results || [])
+            ];
+
+            Promise.all(searchPromises)
+                .then(searchResults => {
+                    const allResults = [...searchResults[0], ...searchResults[1]];
+                    const filteredResults = allResults.filter(item => 
+                        sources.some(source => item.production_companies && item.production_companies.some(pc => pc.name.includes(source.name)))
+                    );
+                    fetchReleaseCountries(filteredResults, false);
+                });
+        }
+
+        function fetchReleaseCountries(items, isSaved) {
+            const promises = items.map(item => 
+                fetch(`${TMDB_BASE_URL}/${item.media_type || 'movie'}/${item.id}/release_dates?api_key=${TMDB_API_KEY}`)
+                    .then(response => response.json())
+                    .then(data => ({ ...item, release_dates: data.results || [] }))
+            );
+
+            Promise.all(promises)
+                .then(results => {
+                    displayMovies(results, isSaved);
+                });
+        }
+
+        function displayMovies(movies, isSaved) {
+            const movieList = document.getElementById('movie-list');
+            movieList.innerHTML = '';
+            movies.forEach(movie => {
+                const movieCard = document.createElement('div');
+                movieCard.className = 'movie-card relative bg-gray-800 rounded p-4';
+
+                const moviePoster = movie.poster_path ? `${IMG_BASE_URL}${movie.poster_path}` : 'https://via.placeholder.com/500x750';
+                const title = movie.title || movie.name;
+                const releaseDetails = getReleaseDetails(movie.release_dates);
+                const details = `
+                    <div class="movie-details absolute inset-0 flex flex-col items-center justify-center text-center p-4 bg-black bg-opacity-75 z-10">
+                        <h3 class="text-lg font-bold">${title}</h3>
+                        <p>TMDB ID: ${movie.id}</p>
+                        <p>IMDB ID: ${movie.imdb_id || 'N/A'}</p>
+                        <p>Seasons: ${movie.number_of_seasons || 'N/A'}</p>
+                        <p>Type: ${movie.media_type === 'tv' ? 'TV Show' : 'Movie'}</p>
+                        ${releaseDetails}
+                    </div>
+                `;
+
+                const logoSrc = movie.production_companies && movie.production_companies.length > 0
+                    ? getLogoForSource(movie.production_companies[0].name)
+                    : 'https://via.placeholder.com/50';
+
+                movieCard.innerHTML = `
+                    <img src="${moviePoster}" alt="${title}" class="movie-poster w-full rounded z-0">
+                    ${details}
+                    <img src="${logoSrc}" alt="${movie.production_companies ? movie.production_companies[0].name : 'Unknown'}" class="absolute top-2 right-2 w-10 h-10 z-20">
+                    <i class="fas fa-heart absolute top-2 left-2 cursor-pointer ${isSaved ? 'text-red-500' : ''} z-20"></i>
+                `;
+                
+                movieCard.querySelector('.fa-heart').addEventListener('click', () => toggleSaveMovie(movie));
+                movieCard.addEventListener('mouseenter', () => showDetails(movieCard));
+                movieCard.addEventListener('mouseleave', () => hideDetails(movieCard));
+
+                movieList.appendChild(movieCard);
+            });
+        }
+
+        function getReleaseDetails(releaseDates) {
+            if (!releaseDates || releaseDates.length === 0) {
+                return '<p>Release Info: Not available</p>';
+            }
+
+            const popularCountries = ['US', 'CA', 'GB', 'AU', 'FR', 'DE', 'JP'];
+            let globalRelease = false;
+            const countryFlags = releaseDates.reduce((flags, release) => {
+                if (popularCountries.includes(release.iso_3166_1)) {
+                    flags.push(`<span class="flag-icon flag-icon-${release.iso_3166_1.toLowerCase()}"></span>`);
+                } else {
+                    globalRelease = true;
+                }
+                return flags;
+            }, []);
+
+            if (globalRelease) {
+                countryFlags.push('<i class="fas fa-globe"></i>');
+            }
+
+            return `<p>Release Info: ${countryFlags.join(' ')}</p>`;
+        }
+
+        function getLogoForSource(sourceName) {
+            const source = sources.find(s => sourceName.includes(s.name));
+            return source ? source.logo : 'https://via.placeholder.com/50';
+        }
+
+        function showDetails(movieCard) {
+            movieCard.querySelector('.movie-details').classList.remove('hidden');
+            movieCard.style.zIndex = '30';
+            Array.from(movieCard.parentElement.children).forEach(card => {
+                if (card !== movieCard) {
+                    card.style.filter = 'blur(4px)';
+                }
+            });
+        }
+
+        function hideDetails(movieCard) {
+            movieCard.querySelector('.movie-details').classList.add('hidden');
+            movieCard.style.zIndex = '10';
+            Array.from(movieCard.parentElement.children).forEach(card => {
+                card.style.filter = 'none';
+            });
+        }
+
+        function downloadIds() {
+            const ids = [];
+            document.querySelectorAll('.movie-card').forEach(card => {
+                const tmdbId = card.querySelector('.movie-details p:nth-child(2)').textContent.split(': ')[1];
+                const imdbId = card.querySelector('.movie-details p:nth-child(3)').textContent.split(': ')[1];
+                ids.push(`TMDB ID: ${tmdbId}, IMDB ID: ${imdbId}`);
+            });
+            const blob = new Blob([ids.join('\n')], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'movie-ids.txt';
+            link.click();
+        }
+
+        function toggleSaveMovie(movie) {
+            const index = savedMovies.findIndex(saved => saved.id === movie.id);
+            if (index === -1) {
+                savedMovies.push(movie);
+            } else {
+                savedMovies.splice(index, 1);
+            }
+            localStorage.setItem('savedMovies', JSON.stringify(savedMovies));
+            if (document.getElementById('saved-tab').classList.contains('bg-green-500')) {
+                showSaved();
+            } else {
+                fetchMovies();
+            }
+        }
+
+        function showSaved() {
+            document.getElementById('saved-tab').classList.add('bg-green-500');
+            document.getElementById('download-ids').classList.remove('bg-blue-500');
+            fetchReleaseCountries(savedMovies, true);
+        }
+    </script>
+</body>
+</html>

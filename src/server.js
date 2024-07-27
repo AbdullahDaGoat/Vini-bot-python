@@ -4,30 +4,25 @@ const cors = require('cors');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
-const cookieSession = require('cookie-session');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const port = process.env.PORT || 443;
+const BASE_URL = `https://${process.env.URL}`;
 
 // Middleware setup
 app.use(cors({
-  origin: 'https://savingshub.watch',
+  origin: ["https://savingshub.watch", BASE_URL],
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.options('*', cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // Serve static files from public folder
-
-app.use(cookieSession({
-  name: 'session',
-  keys: [process.env.SECRET_KEY], // secret keys used to sign the cookie
-  maxAge: 1000 * 60 * 60 * 24, // 24 hours
-  secure: true,
-  httpOnly: true,
-  sameSite: 'None'
-}));
+app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(cookieParser());
 
 // Discord client setup
 const client = new Client({
@@ -42,7 +37,6 @@ client.once('ready', () => {
   });
 });
 
-// Log errors to Discord channel
 async function logError(title, error) {
   const channel = client.channels.cache.get(process.env.LOGGING_CHANNEL_ID);
   if (channel) {
@@ -55,7 +49,25 @@ async function logError(title, error) {
   }
 }
 
-// Discord Commands Handling
+// JWT middleware
+function authenticateToken(req, res, next) {
+  const token = req.cookies.token;
+
+  if (token == null) {
+    console.log('No token provided');
+    return res.sendStatus(401);
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      console.log('Token verification failed:', err);
+      return res.sendStatus(403);
+    }
+    req.user = user;
+    next();
+  });
+}
+
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
 
@@ -71,7 +83,7 @@ client.on('interactionCreate', async (interaction) => {
     } else if (commandName === 'api') {
       const routes = ['/api/user', '/auth/discord', '/auth/discord/callback'];
       const results = await Promise.all(routes.map(route => 
-        fetch(`https://savingshub.cloud:${port}${route}`).then(res => ({ route, status: res.status }))
+        fetch(`${BASE_URL}${route}`).then(res => ({ route, status: res.status }))
       ));
 
       const allOk = results.every(r => r.status === 200);
@@ -85,27 +97,7 @@ client.on('interactionCreate', async (interaction) => {
 
       await interaction.reply({ embeds: [embed] });
     } else if (commandName === 'params') {
-      if (!req.session.user) {
-        return await interaction.reply('No user data available. Please log in.');
-      }
-      const user = req.session.user;
-      const embed = new EmbedBuilder()
-        .setTitle('User Parameters')
-        .setDescription('Here are the parameters returned by /api/user:')
-        .setColor('#00FF00')
-        .addFields(
-          { name: 'User ID', value: user.id },
-          { name: 'Username', value: user.username },
-          { name: 'Email', value: user.email },
-          { name: 'Avatar', value: user.avatar },
-          { name: 'Joined At', value: user.joinedAt.toString() },
-          { name: 'Nickname', value: user.nickname || 'N/A' },
-          { name: 'Roles', value: user.roles.join(', ') || 'None' },
-          { name: 'Nitro', value: user.nitro ? 'Yes' : 'No' },
-          { name: 'Connections', value: user.connections || 'N/A' },
-          { name: 'Guilds', value: user.guilds.map(g => g.name).join(', ') || 'None' }
-        );
-      await interaction.reply({ embeds: [embed] });
+      await interaction.reply('This command is not available through Discord. Please use the web interface.');
     } else if (commandName === 'help') {
       const embed = new EmbedBuilder()
         .setTitle('Available Commands')
@@ -114,7 +106,6 @@ client.on('interactionCreate', async (interaction) => {
         .addFields(
           { name: '/checkbot', value: 'Check if the bot is operational' },
           { name: '/api', value: 'Check the status of API routes' },
-          { name: '/params', value: 'Display user parameters from /api/user' },
           { name: '/help', value: 'Display this help message' }
         );
       await interaction.reply({ embeds: [embed] });
@@ -126,13 +117,36 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// OAuth2 authentication endpoint
+async function logUserData(userData) {
+  const channel = client.channels.cache.get(process.env.LOGGING);
+  if (channel) {
+    const embed = new EmbedBuilder()
+      .setTitle('User Login Data')
+      .setDescription(`\`\`\`json\n${JSON.stringify(userData, null, 2)}\n\`\`\``)
+      .setColor('#00FF00')
+      .setTimestamp();
+    await channel.send({ embeds: [embed] });
+  }
+}
+
 app.get('/auth/discord', (req, res) => {
-  const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.REDIRECT_URI)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;
-  res.redirect(authUrl);
+  const token = req.cookies.token;
+
+  if (token) {
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+      if (err) {
+        console.log('Token verification failed:', err);
+        return res.redirect('/auth-failed.html');
+      }
+
+      res.redirect('/dashboard.html');
+    });
+  } else {
+    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.REDIRECT_URI)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;
+    res.redirect(authUrl);
+  }
 });
 
-// OAuth2 callback endpoint
 app.get('/auth/discord/callback', async (req, res) => {
   const { code } = req.query;
   if (!code) {
@@ -180,11 +194,31 @@ app.get('/auth/discord/callback', async (req, res) => {
       roles: member.roles.cache.map(role => role.name),
       nitro: userData.premium_type !== undefined,
       guilds: client.guilds.cache.map(guild => ({ id: guild.id, name: guild.name })),
+      avatarUrl: `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`,
+      discriminator: userData.discriminator,
+      locale: userData.locale,
+      mfa_enabled: userData.mfa_enabled,
+      public_flags: userData.public_flags,
+      flags: userData.flags,
+      premium_type: userData.premium_type,
+      banner: userData.banner,
+      accent_color: userData.accent_color,
+      bio: userData.bio,
+      verified: userData.verified,
+      phone: userData.phone,
+      connected_accounts: userData.connected_accounts
     };
 
-    req.session.user = user;
+    // Generate JWT
+    const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '24h' });
 
-    res.redirect(`/dashboard.html?userId=${user.id}`);
+    // Store the token in a cookie
+    res.cookie('token', token, { httpOnly: true, secure: true, maxAge: 24 * 60 * 60 * 1000 }); // 24 hours
+
+    // Log user data
+    await logUserData(user);
+
+    res.redirect('/dashboard.html');
   } catch (error) {
     console.error('OAuth2 callback error:', error);
     res.redirect('/auth-failed.html');
@@ -192,20 +226,16 @@ app.get('/auth/discord/callback', async (req, res) => {
   }
 });
 
-// API endpoint to get user information
-app.get('/api/user', (req, res) => {
-  if (req.session.user) {
-    return res.json(req.session.user);
-  }
-  res.status(401).json({ error: 'Unauthorized' });
+app.get('/api/user', authenticateToken, (req, res) => {
+  const user = req.user;
+
+  res.json(user);
 });
 
-// Start the server
 app.listen(port, '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`);
 });
 
-// Discord bot login
 client.login(process.env.DISCORD_BOT_TOKEN).catch((error) => {
   console.error('Failed to log in to Discord:', error);
   logError('Failed to log in to Discord', error);
