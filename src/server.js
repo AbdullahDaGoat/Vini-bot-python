@@ -52,13 +52,6 @@ async function logError(title, error) {
 // JWT middleware
 function authenticateToken(req, res, next) {
   const token = req.cookies.token;
-  const bypassUrl = 'https://savingshub.watch'; // Replace with the full URL you want to bypass
-
-  // Check if the request referer matches the bypass URL
-  if (req.get('referer') === bypassUrl) {
-    console.log('Bypassing token verification for URL:', bypassUrl);
-    return next();
-  }
 
   if (token == null) {
     console.log('No token provided');
