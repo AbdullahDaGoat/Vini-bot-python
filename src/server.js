@@ -4,7 +4,6 @@ const cors = require('cors');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
-const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -111,21 +110,8 @@ async function logUserData(userData) {
 }
 
 app.get('/auth/discord', (req, res) => {
-  const token = req.cookies.token;
-
-  if (token) {
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) {
-        console.log('Token verification failed:', err);
-        return res.redirect('/auth-failed.html');
-      }
-
-      res.redirect('/dashboard.html');
-    });
-  } else {
-    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.REDIRECT_URI)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;
-    res.redirect(authUrl);
-  }
+  const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.REDIRECT_URI)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;
+  res.redirect(authUrl);
 });
 
 app.get('/auth/discord/callback', async (req, res) => {
@@ -190,11 +176,6 @@ app.get('/auth/discord/callback', async (req, res) => {
       connected_accounts: userData.connected_accounts
     };
 
-    // Generate JWT
-    const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '24h' });
-
-    // Store the token in a cookie
-    res.cookie('token', token, { httpOnly: true, secure: true, maxAge: 24 * 60 * 60 * 1000 }); // 24 hours
     // Log user data
     await logUserData(user);
 
@@ -207,19 +188,7 @@ app.get('/auth/discord/callback', async (req, res) => {
 });
 
 app.get('/api/user', (req, res) => {
-  const token = req.cookies.token;
-
-  if (!token) {
-    return res.sendStatus(401);
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.sendStatus(403);
-    }
-
-    res.json(user);
-  });
+  res.json({ message: 'User endpoint is accessible without authentication.' });
 });
 
 app.listen(port, '0.0.0.0', () => {
