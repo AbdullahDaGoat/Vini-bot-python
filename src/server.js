@@ -207,9 +207,19 @@ app.get('/auth/discord/callback', async (req, res) => {
 });
 
 app.get('/api/user', (req, res) => {
-  const user = req.user;
+  const token = req.cookies.token;
 
-  res.json(user);
+  if (!token) {
+    return res.sendStatus(401);
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.sendStatus(403);
+    }
+
+    res.json(user);
+  });
 });
 
 app.listen(port, '0.0.0.0', () => {
