@@ -49,25 +49,6 @@ async function logError(title, error) {
   }
 }
 
-// JWT middleware
-function authenticateToken(req, res, next) {
-  const token = req.cookies.token;
-
-  if (token == null) {
-    console.log('No token provided');
-    return res.sendStatus(401);
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      console.log('Token verification failed:', err);
-      return res.sendStatus(403);
-    }
-    req.user = user;
-    next();
-  });
-}
-
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
 
@@ -225,7 +206,7 @@ app.get('/auth/discord/callback', async (req, res) => {
   }
 });
 
-app.get('/api/user', authenticateToken, (req, res) => {
+app.get('/api/user', (req, res) => {
   const user = req.user;
 
   res.json(user);
