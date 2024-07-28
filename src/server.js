@@ -4,6 +4,7 @@ const cors = require('cors');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -15,7 +16,7 @@ app.use(cors({
   origin: ["https://savingshub.watch", BASE_URL, "https://Savingshub.watch", "http://"],
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.options('*', cors());
@@ -46,6 +47,25 @@ async function logError(title, error) {
       .setTimestamp();
     await channel.send({ embeds: [embed] });
   }
+}
+
+// JWT middleware
+function authenticateToken(req, res, next) {
+  const token = req.cookies.token;
+
+  if (token == null) {
+    console.log('No token provided');
+    return res.sendStatus(401);
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      console.log('Token verification failed:', err);
+      return res.sendStatus(403);
+    }
+    req.user = user;
+    next();
+  });
 }
 
 client.on('interactionCreate', async (interaction) => {
@@ -110,8 +130,21 @@ async function logUserData(userData) {
 }
 
 app.get('/auth/discord', (req, res) => {
-  const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.REDIRECT_URI)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;
-  res.redirect(authUrl);
+  const token = req.cookies.token;
+
+  if (token) {
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+      if (err) {
+        console.log('Token verification failed:', err);
+        return res.redirect('/auth-failed.html');
+      }
+
+      res.redirect('/dashboard.html');
+    });
+  } else {
+    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.REDIRECT_URI)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;
+    res.redirect(authUrl);
+  }
 });
 
 app.get('/auth/discord/callback', async (req, res) => {
@@ -176,6 +209,11 @@ app.get('/auth/discord/callback', async (req, res) => {
       connected_accounts: userData.connected_accounts
     };
 
+    // Generate JWT
+    const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+    // Store the token in a cookie
+    res.cookie('token', token, { httpOnly: true, secure: true, maxAge: 24 * 60 * 60 * 1000 }); // 24 hours
     // Log user data
     await logUserData(user);
 
@@ -187,19 +225,10 @@ app.get('/auth/discord/callback', async (req, res) => {
   }
 });
 
-// API key middleware
-function apiKeyMiddleware(req, res, next) {
-  const apiKey = req.headers['x-api-key'];
-  if (apiKey && apiKey === process.env.API_KEY) {
-    next();
-  } else {
-    res.status(403).json({ message: 'Forbidden: Invalid API Key' });
-  }
-}
+app.get('/api/user', authenticateToken, (req, res) => {
+  const user = req.user;
 
-// Protect the /api/user endpoint with API key middleware
-app.get('/api/user', apiKeyMiddleware, (req, res) => {
-  res.json({ message: 'User endpoint is accessible with a valid API key.' });
+  res.json(user);
 });
 
 app.listen(port, '0.0.0.0', () => {
