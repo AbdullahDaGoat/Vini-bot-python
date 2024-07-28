@@ -12,10 +12,9 @@ const BASE_URL = `https://${process.env.URL}`;
 
 const allowedOrigins = ["https://savingshub.watch", BASE_URL, "https://Savingshub.watch", "http://"];
 
-// Middleware setup
 app.use(cors({
   origin: (origin, callback) => {
-    if (allowedOrigins.includes(origin) || !origin) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -31,7 +30,6 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(cookieParser());
 
-// Discord client setup
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
 });
@@ -55,8 +53,6 @@ async function logError(title, error) {
     await channel.send({ embeds: [embed] });
   }
 }
-
-// Remove JWT middleware
 
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
@@ -213,7 +209,7 @@ app.get('/api/user', (req, res) => {
   if (allowedOrigins.includes(origin)) {
     res.status(200).json({ message: 'Authenticated user data' });
   } else {
-    res.status(401).json({ error: 'Unauthorized' });
+    res.status(404).json({ error: 'Not Found' });
   }
 });
 
