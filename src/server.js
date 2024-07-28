@@ -209,7 +209,7 @@ app.get('/api/user', (req, res) => {
   if (allowedOrigins.includes(origin)) {
     res.status(200).json({ message: 'Authenticated user data' });
   } else {
-    res.status(404).json({ error: 'Not Found' });
+    res.status(404);
   }
 });
 
