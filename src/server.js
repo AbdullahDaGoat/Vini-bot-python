@@ -10,13 +10,7 @@ const app = express();
 const port = process.env.PORT || 443;
 const BASE_URL = `https://${process.env.URL}`;
 
-// Allowed URLs for CORS
-const allowedOrigins = [
-  "https://savingshub.watch",
-  BASE_URL,
-  "https://Savingshub.watch",
-  "http://"
-];
+const allowedOrigins = ["https://savingshub.watch", BASE_URL, "https://Savingshub.watch", "http://"];
 
 // Middleware setup
 app.use(cors({
@@ -61,6 +55,8 @@ async function logError(title, error) {
     await channel.send({ embeds: [embed] });
   }
 }
+
+// Remove JWT middleware
 
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
@@ -127,14 +123,7 @@ app.get('/auth/discord', (req, res) => {
   const token = req.cookies.token;
 
   if (token) {
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) {
-        console.log('Token verification failed:', err);
-        return res.redirect('/auth-failed.html');
-      }
-
-      res.redirect('/dashboard.html');
-    });
+    res.redirect('/dashboard.html');
   } else {
     const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.REDIRECT_URI)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;
     res.redirect(authUrl);
@@ -221,38 +210,11 @@ app.get('/auth/discord/callback', async (req, res) => {
 
 app.get('/api/user', (req, res) => {
   const origin = req.get('origin');
-
-  if (!allowedOrigins.includes(origin)) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (allowedOrigins.includes(origin)) {
+    res.status(200).json({ message: 'Authenticated user data' });
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
   }
-
-  // Simulate user data for allowed origins
-  const user = {
-    id: '1234567890',
-    username: 'exampleUser',
-    email: 'user@example.com',
-    avatar: 'avatarUrl',
-    joinedAt: '2021-01-01T00:00:00.000Z',
-    nickname: 'exampleNickname',
-    roles: ['Admin', 'Member'],
-    nitro: true,
-    guilds: [{ id: '123456', name: 'Example Guild' }],
-    avatarUrl: 'https://cdn.discordapp.com/avatars/1234567890/avatarUrl.png',
-    discriminator: '0001',
-    locale: 'en-US',
-    mfa_enabled: true,
-    public_flags: 0,
-    flags: 0,
-    premium_type: 2,
-    banner: 'bannerUrl',
-    accent_color: '#ffffff',
-    bio: 'Example bio',
-    verified: true,
-    phone: '123-456-7890',
-    connected_accounts: [{ id: '123', name: 'exampleAccount' }]
-  };
-
-  res.status(200).json(user);
 });
 
 app.listen(port, '0.0.0.0', () => {
