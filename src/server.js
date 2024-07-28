@@ -15,7 +15,7 @@ app.use(cors({
   origin: ["https://savingshub.watch", BASE_URL, "https://Savingshub.watch", "http://"],
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
 }));
 
 app.options('*', cors());
@@ -187,8 +187,19 @@ app.get('/auth/discord/callback', async (req, res) => {
   }
 });
 
-app.get('/api/user', (req, res) => {
-  res.json({ message: 'User endpoint is accessible without authentication.' });
+// API key middleware
+function apiKeyMiddleware(req, res, next) {
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey && apiKey === process.env.API_KEY) {
+    next();
+  } else {
+    res.status(403).json({ message: 'Forbidden: Invalid API Key' });
+  }
+}
+
+// Protect the /api/user endpoint with API key middleware
+app.get('/api/user', apiKeyMiddleware, (req, res) => {
+  res.json({ message: 'User endpoint is accessible with a valid API key.' });
 });
 
 app.listen(port, '0.0.0.0', () => {
