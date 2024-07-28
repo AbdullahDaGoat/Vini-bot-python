@@ -53,11 +53,6 @@ async function logError(title, error) {
 function authenticateToken(req, res, next) {
   const token = req.cookies.token;
 
-  if (token == null) {
-    console.log('No token provided');
-    return res.sendStatus(401);
-  }
-
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
       req.user = user;
