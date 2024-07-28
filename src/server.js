@@ -13,7 +13,7 @@ const BASE_URL = `https://${process.env.URL}`;
 
 // Middleware setup
 app.use(cors({
-  origin: ["https://savingshub.watch", BASE_URL],
+  origin: ["https://savingshub.watch", BASE_URL, "https://Savingshub.watch", "http://"],
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -214,7 +214,6 @@ app.get('/auth/discord/callback', async (req, res) => {
 
     // Store the token in a cookie
     res.cookie('token', token, { httpOnly: true, secure: true, maxAge: 24 * 60 * 60 * 1000 }); // 24 hours
-
     // Log user data
     await logUserData(user);
 
