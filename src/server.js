@@ -4,16 +4,29 @@ const cors = require('cors');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
-const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
 const app = express();
 const port = process.env.PORT || 443;
 const BASE_URL = `https://${process.env.URL}`;
 
+// Allowed URLs for CORS
+const allowedOrigins = [
+  "https://savingshub.watch",
+  BASE_URL,
+  "https://Savingshub.watch",
+  "http://"
+];
+
 // Middleware setup
 app.use(cors({
-  origin: ["https://savingshub.watch", BASE_URL, "https://Savingshub.watch", "http://"],
+  origin: (origin, callback) => {
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -47,20 +60,6 @@ async function logError(title, error) {
       .setTimestamp();
     await channel.send({ embeds: [embed] });
   }
-}
-
-// JWT middleware
-function authenticateToken(req, res, next) {
-  const token = req.cookies.token;
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      req.user = user;
-      next();
-    }
-    req.user = user;
-    next();
-  });
 }
 
 client.on('interactionCreate', async (interaction) => {
@@ -220,10 +219,40 @@ app.get('/auth/discord/callback', async (req, res) => {
   }
 });
 
-app.get('/api/user', authenticateToken, (req, res) => {
-  const user = req.user;
+app.get('/api/user', (req, res) => {
+  const origin = req.get('origin');
 
-  res.json(user);
+  if (!allowedOrigins.includes(origin)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Simulate user data for allowed origins
+  const user = {
+    id: '1234567890',
+    username: 'exampleUser',
+    email: 'user@example.com',
+    avatar: 'avatarUrl',
+    joinedAt: '2021-01-01T00:00:00.000Z',
+    nickname: 'exampleNickname',
+    roles: ['Admin', 'Member'],
+    nitro: true,
+    guilds: [{ id: '123456', name: 'Example Guild' }],
+    avatarUrl: 'https://cdn.discordapp.com/avatars/1234567890/avatarUrl.png',
+    discriminator: '0001',
+    locale: 'en-US',
+    mfa_enabled: true,
+    public_flags: 0,
+    flags: 0,
+    premium_type: 2,
+    banner: 'bannerUrl',
+    accent_color: '#ffffff',
+    bio: 'Example bio',
+    verified: true,
+    phone: '123-456-7890',
+    connected_accounts: [{ id: '123', name: 'exampleAccount' }]
+  };
+
+  res.status(200).json(user);
 });
 
 app.listen(port, '0.0.0.0', () => {
