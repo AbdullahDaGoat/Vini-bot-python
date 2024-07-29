@@ -11,7 +11,7 @@ const nodemailer = require('nodemailer');
 // Load environment variables
 dotenv.config();
 
-const redirect_uri = `https://savingshub.cloud/auth/discord/callback`;
+const redirect_uri = `https://Savingshub.cloud/auth/discord/callback`;
 const client_id = `1256482400066605086`;
 
 // Hardcoded variables to change
