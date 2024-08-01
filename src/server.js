@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 
 // Load environment variables
 dotenv.config();
@@ -29,31 +29,23 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Add this line to handle preflight requests
 app.options('*', cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Initialize SQLite database
-const db = new sqlite3.Database('./users.db', (err) => {
-  if (err) {
-    console.error('Failed to connect to the database:', err);
-  } else {
-    console.log('Connected to the SQLite database.');
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      username TEXT,
-      email TEXT,
-      avatar TEXT,
-      joinedAt TEXT,
-      nickname TEXT,
-      roles TEXT,
-      nitro INTEGER,
-      connections TEXT,
-      guilds TEXT
-    )`);
-  }
-});
+// Local storage for users
+let users = {};
+
+// Read users from file if it exists
+const usersFilePath = './users.json';
+if (fs.existsSync(usersFilePath)) {
+  users = JSON.parse(fs.readFileSync(usersFilePath));
+}
+
+// Function to save users to file
+const saveUsersToFile = () => {
+  fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
+};
 
 // Discord client setup
 const client = new Client({
@@ -137,23 +129,23 @@ client.on('interactionCreate', async (interaction) => {
       logError('API check error', error);
     }
   } else if (commandName === 'params') {
-    const sampleUser = 1;
+    const sampleUser = Object.values(users)[0];
     if (sampleUser) {
       const embed = new EmbedBuilder()
         .setTitle('User Parameters')
         .setDescription('Here are the parameters returned by /api/user. Some values are omitted for privacy reasons:')
         .setColor('#00FF00') // Hacker-like green color
         .addFields(
-          { name: 'User ID', value: "Sample User ID" },
-          { name: 'Username', value: "Sample User Name" },
-          { name: 'Email', value: "Sample User Email" },
-          { name: 'Avatar', value: "Sample User Avatar" },
-          { name: 'Joined At', value: "Sample User Joined At" },
-          { name: 'Nickname', value: "Sample User Nickname" },
-          { name: 'Roles', value: "Sample User Roles" },
-          { name: 'Nitro', value: "Sample User Nitro" },
-          { name: 'Connections', value: "Sample User Connections" },
-          { name: 'Guilds', value: "Sample User Guilds" }
+          { name: 'User ID', value: sampleUser.id },
+          { name: 'Username', value: sampleUser.username },
+          { name: 'Email', value: sampleUser.email },
+          { name: 'Avatar', value: sampleUser.avatar },
+          { name: 'Joined At', value: sampleUser.joinedAt },
+          { name: 'Nickname', value: sampleUser.nickname },
+          { name: 'Roles', value: sampleUser.roles },
+          { name: 'Nitro', value: sampleUser.nitro.toString() },
+          { name: 'Connections', value: sampleUser.connections },
+          { name: 'Guilds', value: sampleUser.guilds }
         );
       await interaction.reply({ embeds: [embed] });
     } else {
@@ -243,18 +235,12 @@ app.get('/auth/discord/callback', async (req, res) => {
       guilds: client.guilds.cache.map(guild => ({ id: guild.id, name: guild.name })).map(g => `${g.id}:${g.name}`).join(',')
     };
 
-    // Store user data in SQLite database
-    db.run(`INSERT OR REPLACE INTO users (id, username, email, avatar, joinedAt, nickname, roles, nitro, connections, guilds)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-      [user.id, user.username, user.email, user.avatar, user.joinedAt, user.nickname, user.roles, user.nitro, user.connections, user.guilds], 
-      (err) => {
-      if (err) {
-        console.error('Failed to insert user data into the database:', err);
-      }
-    });
+    // Store user data locally
+    users[user.id] = user;
+    saveUsersToFile();
 
     console.log('User authenticated:', user); // Log user data for debugging
-    res.redirect(`/dashboard.html?userId=${user.id}`);
+    res.redirect(`/dashboard.html`);
   } catch (error) {
     console.error('OAuth2 callback error:', error);
     res.redirect('/auth-failed.html');
@@ -265,24 +251,17 @@ app.get('/auth/discord/callback', async (req, res) => {
 app.get('/api/user', (req, res) => {
   const origin = req.get('origin');
   const allowedOrigins = ['https://savingshub.watch', 'https://savingshub.cloud'];
-  console.log('Session state on /api/user:', req.session); // Log session state for debugging
 
   if (allowedOrigins.includes(origin) || req.get('host').includes('savingshub.cloud')) {
-    const userId = req.query.userId;
-    if (userId) {
-      db.get('SELECT * FROM users WHERE id = ?', [userId], (err, row) => {
-        if (err) {
-          console.error('Failed to retrieve user data from the database:', err);
-          return res.status(500).json({ error: 'Internal Server Error' });
-        }
-        if (row) {
-          return res.json(row);
-        }
-        res.status(404).json({ error: 'User not found' });
-      });
-    } else {
-      res.status(400).json({ error: 'User ID not provided' });
+    const authHeader = req.get('Authorization');
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      const userId = Object.keys(users).find(id => users[id].token === token);
+      if (userId) {
+        return res.json(users[userId]);
+      }
     }
+    res.status(401).json({ error: 'Unauthorized' });
   } else {
     console.error('Unauthorized access attempt'); // Log unauthorized access attempts
     res.status(401).json({ error: 'Unauthorized' });
