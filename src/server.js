@@ -168,8 +168,8 @@ const authenticatedUsers = {};
 // Middleware to check if user is authenticated
 app.use((req, res, next) => {
   const userId = req.query.userId || req.body.userId;
-  console.log('Middleware - Session User:', req.session.user); // Add a log to check session user
-  if (req.session.user) {
+  console.log('Middleware - Session User:', req.session?.user); // Add a log to check session user
+  if (req.session?.user) {
     return res.redirect(`/dashboard.html?userId=${req.session.user.id}`);
   }
   if (userId && authenticatedUsers[userId]) {
@@ -263,8 +263,8 @@ app.get('/auth/discord/callback', async (req, res) => {
 // API endpoint to get user information
 app.get('/api/user', (req, res) => {
   const userId = req.query.userId || req.body.userId;
-  console.log('API User - Session User:', req.session.user); // Add a log to check session user
-  if (req.session.user) {
+  console.log('API User - Session User:', req.session?.user); // Add a log to check session user
+  if (req.session?.user) {
     return res.json(req.session.user);
   }
   if (userId && authenticatedUsers[userId]) {
