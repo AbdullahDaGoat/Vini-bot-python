@@ -265,7 +265,6 @@ app.get('/auth/discord/callback', async (req, res) => {
 
     console.log('User authenticated:', user); // Log user data for debugging
     req.session.user = user;
-    req.session.save(); // Ensure session is saved
     res.redirect(`/dashboard.html?userId=${user.id}`);
   } catch (error) {
     console.error('OAuth2 callback error:', error);
