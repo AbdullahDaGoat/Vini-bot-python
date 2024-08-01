@@ -265,6 +265,7 @@ app.get('/auth/discord/callback', async (req, res) => {
 
     console.log('User authenticated:', user); // Log user data for debugging
     req.session.user = user;
+    console.log('Session set:', req.session.user);
     res.redirect(`/dashboard.html?userId=${user.id}`);
   } catch (error) {
     console.error('OAuth2 callback error:', error);
@@ -276,6 +277,7 @@ app.get('/auth/discord/callback', async (req, res) => {
 app.get('/api/user', (req, res) => {
   if (req.session?.user) {
     const userId = req.session.user.id;
+    console.log('Session user found:', req.session.user);
     db.get('SELECT * FROM users WHERE id = ?', [userId], (err, row) => {
       if (err) {
         console.error('Failed to retrieve user data from the database:', err);
@@ -288,6 +290,7 @@ app.get('/api/user', (req, res) => {
     });
   } else {
     console.error('Unauthorized access attempt'); // Log unauthorized access attempts
+    console.log('Session state:', req.session);
     res.status(401).json({ error: 'Unauthorized' });
   }
 });
