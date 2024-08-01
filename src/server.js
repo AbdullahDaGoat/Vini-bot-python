@@ -5,7 +5,6 @@ const dotenv = require('dotenv');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
-const cookieSession = require('cookie-session');
 const sqlite3 = require('sqlite3').verbose();
 
 // Load environment variables
@@ -34,15 +33,6 @@ app.use(cors({
 app.options('*', cors());
 app.use(express.json());
 app.use(express.static('public'));
-
-app.use(cookieSession({
-  name: 'session',
-  keys: [process.env.SECRET_KEY], // secret keys used to sign the cookie
-  maxAge: 1000 * 60 * 15, // 15 minutes
-  secure: process.env.NODE_ENV === 'production', // ensure secure cookies in production
-  httpOnly: true,
-  sameSite: 'lax'
-}));
 
 // Initialize SQLite database
 const db = new sqlite3.Database('./users.db', (err) => {
@@ -264,8 +254,6 @@ app.get('/auth/discord/callback', async (req, res) => {
     });
 
     console.log('User authenticated:', user); // Log user data for debugging
-    req.session.user = user;
-    console.log('Session set:', req.session.user);
     res.redirect(`/dashboard.html?userId=${user.id}`);
   } catch (error) {
     console.error('OAuth2 callback error:', error);
@@ -275,23 +263,28 @@ app.get('/auth/discord/callback', async (req, res) => {
 
 // API endpoint to get user information
 app.get('/api/user', (req, res) => {
+  const origin = req.get('origin');
+  const allowedOrigins = ['https://savingshub.watch', 'https://savingshub.cloud'];
   console.log('Session state on /api/user:', req.session); // Log session state for debugging
-  if (req.session?.user) {
-    const userId = req.session.user.id;
-    console.log('Session user found:', req.session.user);
-    db.get('SELECT * FROM users WHERE id = ?', [userId], (err, row) => {
-      if (err) {
-        console.error('Failed to retrieve user data from the database:', err);
-        return res.status(500).json({ error: 'Internal Server Error' });
-      }
-      if (row) {
-        return res.json(row);
-      }
-      res.status(404).json({ error: 'User not found' });
-    });
+
+  if (allowedOrigins.includes(origin) || req.get('host').includes('savingshub.cloud')) {
+    const userId = req.query.userId;
+    if (userId) {
+      db.get('SELECT * FROM users WHERE id = ?', [userId], (err, row) => {
+        if (err) {
+          console.error('Failed to retrieve user data from the database:', err);
+          return res.status(500).json({ error: 'Internal Server Error' });
+        }
+        if (row) {
+          return res.json(row);
+        }
+        res.status(404).json({ error: 'User not found' });
+      });
+    } else {
+      res.status(400).json({ error: 'User ID not provided' });
+    }
   } else {
     console.error('Unauthorized access attempt'); // Log unauthorized access attempts
-    console.log('Session state:', req.session);
     res.status(401).json({ error: 'Unauthorized' });
   }
 });
