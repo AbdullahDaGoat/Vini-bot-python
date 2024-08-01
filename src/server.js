@@ -12,12 +12,14 @@ dotenv.config();
 
 const redirect_uri = `https://Savingshub.cloud/auth/discord/callback`;
 const client_id = `1256482400066605086`;
+
+// Hardcoded variables to change
 const guild_id = `1261067418219057173`;
 const role_id = `1261067959393193994`;
-const log_channel = `1261070442035286178`;
+const log_channel = `1261070442035286178`; // Replace with your log channel ID
 
 const app = express();
-const port = process.env.PORT || 443;
+const port = process.env.PORT || 443; 
 
 // Middleware setup
 app.use(cors({
@@ -27,15 +29,16 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Add this line to handle preflight requests
 app.options('*', cors());
 app.use(express.json());
 app.use(express.static('public'));
 
 app.use(cookieSession({
   name: 'session',
-  keys: [process.env.SECRET_KEY],
-  maxAge: 1000 * 60 * 15,
-  secure: process.env.NODE_ENV === 'production',
+  keys: [process.env.SECRET_KEY], // secret keys used to sign the cookie
+  maxAge: 1000 * 60 * 15, // 15 minutes
+  secure: process.env.NODE_ENV === 'production', // ensure secure cookies in production
   httpOnly: true,
   sameSite: 'lax'
 }));
@@ -48,25 +51,130 @@ const client = new Client({
 client.once('ready', () => {
   console.log('Discord bot is ready!');
   client.user.setPresence({
-    status: 'dnd',
-    activities: [{ name: 'SavingsHub Security', type: 'WATCHING' }],
+    status: 'dnd', // online, idle, dnd, invisible
+    activities: [
+      {
+        name: 'SavingsHub Security', // Set the bot's activity name
+        type: 'WATCHING', // PLAYING, STREAMING, LISTENING, WATCHING
+      },
+    ],
   });
 });
 
-client.login(process.env.DISCORD_BOT_TOKEN).catch(console.error);
+client.on('error', (error) => {
+  console.error('Discord client error:', error);
+  logError('Discord client error', error);
+});
+
+client.on('shardError', (error, shardId) => {
+  console.error(`WebSocket shard error on shard ${shardId}:`, error);
+  logError(`WebSocket shard error on shard ${shardId}`, error);
+});
+
+client.login(process.env.DISCORD_BOT_TOKEN).catch((error) => {
+  console.error('Failed to log in to Discord:', error);
+  logError('Failed to log in to Discord', error);
+});
+
+async function logError(title, error) {
+  const channel = client.channels.cache.get(log_channel);
+  if (channel) {
+    const embed = new EmbedBuilder()
+      .setTitle(title)
+      .setDescription(`\`\`\`${error.stack}\`\`\``)
+      .setColor('#FF0000')
+      .setTimestamp();
+    channel.send({ embeds: [embed] });
+  } else {
+    console.error('Log channel not found:', log_channel);
+  }
+}
+
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isCommand()) return;
+
+  const { commandName } = interaction;
+
+  if (commandName === 'checkbot') {
+    const embed = new EmbedBuilder()
+      .setTitle('Bot Status')
+      .setDescription('Bot is operational!')
+      .setColor('#00FF00');
+    await interaction.reply({ embeds: [embed] });
+  } else if (commandName === 'api') {
+    try {
+      // Check all routes
+      const routes = ['/api/user', '/auth/discord', '/auth/discord/callback'];
+      const results = await Promise.all(routes.map(route => 
+        fetch(`https://savingshub.cloud:${port}${route}`).then(res => ({route, status: res.status}))
+      ));
+      
+      const allOk = results.every(r => r.status === 200);
+      const statusText = results.map(r => `${r.route}: ${r.status === 200 ? '✅' : '❌'}`).join('\n');
+      
+      const embed = new EmbedBuilder()
+        .setTitle('API Status')
+        .setDescription(allOk ? 'All API routes are working correctly.' : 'There are issues with some API routes.')
+        .setColor(allOk ? '#00FF00' : '#FF0000')
+        .addFields({ name: 'Route Status', value: statusText });
+      
+      await interaction.reply({ embeds: [embed] });
+    } catch (error) {
+      console.error('API check error:', error);
+      await interaction.reply('There was an error checking the API status. Please try again later.');
+      logError('API check error', error);
+    }
+  } else if (commandName === 'params') {
+    const sampleUser = 1;
+    if (sampleUser) {
+      const embed = new EmbedBuilder()
+        .setTitle('User Parameters')
+        .setDescription('Here are the parameters returned by /api/user. Some values are omitted for privacy reasons:')
+        .setColor('#00FF00') // Hacker-like green color
+        .addFields(
+          { name: 'User ID', value: "Sample User ID" },
+          { name: 'Username', value: "Sample User Name" },
+          { name: 'Email', value: "Sample User Email" },
+          { name: 'Avatar', value: "Sample User Avatar" },
+          { name: 'Joined At', value: "Sample User Joined At" },
+          { name: 'Nickname', value: "Sample User Nickname" },
+          { name: 'Roles', value: "Sample User Roles" },
+          { name: 'Nitro', value: "Sample User Nitro" },
+          { name: 'Connections', value: "Sample User Connections" },
+          { name: 'Guilds', value: "Sample User Guilds" }
+        );
+      await interaction.reply({ embeds: [embed] });
+    } else {
+      await interaction.reply('No authenticated users found. Unable to display parameters.');
+    }
+  } else if (commandName === 'help') {
+    const embed = new EmbedBuilder()
+      .setTitle('Available Commands')
+      .setDescription('Here are the available commands:')
+      .setColor('#FFA500')
+      .addFields(
+        { name: '/checkbot', value: 'Check if the bot is operational' },
+        { name: '/api', value: 'Check the status of API routes' },
+        { name: '/params', value: 'Display user parameters from /api/user' },
+        { name: '/help', value: 'Display this help message' }
+      );
+    await interaction.reply({ embeds: [embed] });
+  }
+});
 
 // Authenticated users storage
 const authenticatedUsers = {};
 
 // Middleware to check if user is authenticated
 app.use((req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1];
-
-  if (req.session.user || (token && authenticatedUsers[token])) {
-    return next();
+  const userId = req.query.userId || req.body.userId;
+  if (req.session.user) {
+    return res.redirect(`/dashboard.html?userId=${req.session.user.id}`);
   }
-
-  res.status(401).json({ error: 'Unauthorized' });
+  if (userId && authenticatedUsers[userId]) {
+    return res.redirect(`/dashboard.html?userId=${userId}`);
+  }
+  next();
 });
 
 // OAuth2 authentication endpoint
@@ -106,10 +214,17 @@ app.get('/auth/discord/callback', async (req, res) => {
     const userData = await userResponse.json();
 
     const guild = client.guilds.cache.get(guild_id);
-    const member = await guild.members.fetch(userData.id);
-    const requiredRole = guild.roles.cache.get(role_id);
+    if (!guild) {
+      return res.redirect('/auth-failed.html');
+    }
 
-    if (!member || !requiredRole || !member.roles.cache.has(requiredRole.id)) {
+    const member = await guild.members.fetch(userData.id);
+    if (!member) {
+      return res.redirect('/auth-failed.html');
+    }
+
+    const requiredRole = guild.roles.cache.get(role_id);
+    if (!requiredRole || !member.roles.cache.has(requiredRole.id)) {
       return res.redirect('/auth-failed.html');
     }
 
@@ -131,7 +246,9 @@ app.get('/auth/discord/callback', async (req, res) => {
       guilds: client.guilds.cache.map(guild => ({ id: guild.id, name: guild.name })),
     };
 
-    authenticatedUsers[tokenData.access_token] = user; // Store user with the token
+    // Store user data
+    authenticatedUsers[user.id] = user;
+
     req.session.user = user;
 
     res.redirect(`/dashboard.html?userId=${user.id}`);
@@ -143,8 +260,13 @@ app.get('/auth/discord/callback', async (req, res) => {
 
 // API endpoint to get user information
 app.get('/api/user', (req, res) => {
+  const userId = req.query.userId || req.body.userId;
+  console.log('Session User:', req.session.user); // Log session user
   if (req.session.user) {
     return res.json(req.session.user);
+  }
+  if (userId && authenticatedUsers[userId]) {
+    return res.json(authenticatedUsers[userId]);
   }
   res.status(401).json({ error: 'Unauthorized' });
 });
