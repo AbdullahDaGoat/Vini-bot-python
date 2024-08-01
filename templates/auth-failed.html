@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Authentication Failed</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- TEST -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
@@ -36,10 +37,10 @@
         <h1 class="text-3xl font-bold mb-6 text-center text-purple-600 transition-colors duration-300" id="title">Authentication Failed</h1>
         <p class="text-gray-700 mb-4 transition-colors duration-300" id="description">Sorry, we couldn't authenticate you. Please make sure you meet the following requirements:</p>
         <ul class="list-disc list-inside mb-6 text-gray-600 space-y-2 transition-colors duration-300" id="list">
-          <li class="requirement-item">You are a member of the required Discord server</li>
+          <li class="requirement-item">You are a member of the required <a href="discord.gg/SavingsHub" rel="nofollow" target="_blank" class="text-blue-500">Discord server</a></li>
           <li class="requirement-item">You have the necessary role in the server</li>
         </ul>
-        <a href="/" class="block w-full text-center bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg" id="tryAgainButton">
+        <a href="{{ url_for('index') }}"class="block w-full text-center bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg" id="tryAgainButton">
           Try Again
         </a>
       </div>

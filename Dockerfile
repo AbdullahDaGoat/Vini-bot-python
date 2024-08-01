@@ -1,26 +1,25 @@
-# Use an official Node.js runtime as a parent image
-FROM node:18-slim
+# Use the official Python image from the Docker Hub
+FROM python:3.10-slim
 
-# Set the working directory
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy package.json and pnpm-lock.yaml files
-COPY package.json pnpm-lock.yaml ./
+# Copy the requirements file into the container
+COPY requirements.txt /app/
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install the dependencies
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
-# Install project dependencies
-RUN pnpm install --frozen-lockfile || pnpm install
+# Copy the current directory contents into the container at /app
+COPY . /app/
 
-# Copy the rest of the application code
-COPY . .
+# Expose the port that Waitress will listen on
+EXPOSE 443
 
-# Expose the port the app runs on
-EXPOSE 80
-
-# Define environment variables
-ENV NODE_ENV production
-
-# Run the application
-CMD ["pnpm", "run", "start"]
+# Command to run the application
+CMD ["python", "wsgi.py"]
