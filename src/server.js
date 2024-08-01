@@ -6,6 +6,7 @@ const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
 const cookieSession = require('cookie-session');
+const sqlite3 = require('sqlite3').verbose();
 
 // Load environment variables
 dotenv.config();
@@ -42,6 +43,27 @@ app.use(cookieSession({
   httpOnly: true,
   sameSite: 'lax'
 }));
+
+// Initialize SQLite database
+const db = new sqlite3.Database('./users.db', (err) => {
+  if (err) {
+    console.error('Failed to connect to the database:', err);
+  } else {
+    console.log('Connected to the SQLite database.');
+    db.run(`CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT,
+      email TEXT,
+      avatar TEXT,
+      joinedAt TEXT,
+      nickname TEXT,
+      roles TEXT,
+      nitro INTEGER,
+      connections TEXT,
+      guilds TEXT
+    )`);
+  }
+});
 
 // Discord client setup
 const client = new Client({
@@ -162,18 +184,6 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// Authenticated users storage
-const authenticatedUsers = {};
-
-// Middleware to check if user is authenticated
-app.use((req, res, next) => {
-  console.log('Middleware - Session User:', req.session?.user); // Add a log to check session user
-  if (req.session?.user) {
-    return next();
-  }
-  res.status(401).json({ error: 'Unauthorized' });
-});
-
 // OAuth2 authentication endpoint
 app.get('/auth/discord', (req, res) => {
   const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=code&scope=identify%20guilds.join%20email%20connections`;
@@ -237,18 +247,23 @@ app.get('/auth/discord/callback', async (req, res) => {
       avatar: userData.avatar,
       joinedAt: member.joinedAt,
       nickname: member.nickname,
-      roles: member.roles.cache.map(role => role.name),
-      nitro: userData.premium_type !== undefined,
-      connections: connections.map(conn => conn.type),
-      guilds: client.guilds.cache.map(guild => ({ id: guild.id, name: guild.name })),
+      roles: member.roles.cache.map(role => role.name).join(','),
+      nitro: userData.premium_type !== undefined ? 1 : 0,
+      connections: connections.map(conn => conn.type).join(','),
+      guilds: client.guilds.cache.map(guild => ({ id: guild.id, name: guild.name })).map(g => `${g.id}:${g.name}`).join(',')
     };
 
-    // Store user data
-    authenticatedUsers[user.id] = user;
+    // Store user data in SQLite database
+    db.run(`INSERT OR REPLACE INTO users (id, username, email, avatar, joinedAt, nickname, roles, nitro, connections, guilds)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+      [user.id, user.username, user.email, user.avatar, user.joinedAt, user.nickname, user.roles, user.nitro, user.connections, user.guilds], 
+      (err) => {
+      if (err) {
+        console.error('Failed to insert user data into the database:', err);
+      }
+    });
 
     req.session.user = user;
-    console.log('OAuth2 callback - Session User:', req.session.user); // Add a log to check session user
-
     res.redirect(`/dashboard.html?userId=${user.id}`);
   } catch (error) {
     console.error('OAuth2 callback error:', error);
@@ -258,12 +273,21 @@ app.get('/auth/discord/callback', async (req, res) => {
 
 // API endpoint to get user information
 app.get('/api/user', (req, res) => {
-  // Check if the user is stored in the session
   if (req.session?.user) {
-    console.log('API User - Session User:', req.session.user); // Add a log to check session user
-    return res.json(req.session.user);
+    const userId = req.session.user.id;
+    db.get('SELECT * FROM users WHERE id = ?', [userId], (err, row) => {
+      if (err) {
+        console.error('Failed to retrieve user data from the database:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+      }
+      if (row) {
+        return res.json(row);
+      }
+      res.status(404).json({ error: 'User not found' });
+    });
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
   }
-  res.status(401).json({ error: 'Unauthorized' });
 });
 
 // Serve static files for the maintenance page
