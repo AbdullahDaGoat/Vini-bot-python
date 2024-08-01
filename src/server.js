@@ -275,6 +275,7 @@ app.get('/auth/discord/callback', async (req, res) => {
 
 // API endpoint to get user information
 app.get('/api/user', (req, res) => {
+  console.log('Session state on /api/user:', req.session); // Log session state for debugging
   if (req.session?.user) {
     const userId = req.session.user.id;
     console.log('Session user found:', req.session.user);
