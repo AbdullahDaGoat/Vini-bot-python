@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const session = require('express-session');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
@@ -29,7 +30,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.options('*', cors());
+app.use(session({
+  secret: 'your-secret-key', // Change this to a strong, unique secret
+  resave: false,
+  saveUninitialized: true,
+}));
+
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -233,46 +239,47 @@ app.get('/auth/discord/callback', async (req, res) => {
       nitro: userData.premium_type !== undefined ? 1 : 0,
       connections: connections.map(conn => conn.type).join(','),
       guilds: client.guilds.cache.map(guild => ({ id: guild.id, name: guild.name })).map(g => `${g.id}:${g.name}`).join(',')
-    };
-
-    // Store user data locally
-    users[user.id] = { ...user, token: tokenData.access_token };
-    saveUsersToFile();
-
-    console.log('User authenticated:', user); // Log user data for debugging
-    res.redirect(`/dashboard.html`);
-  }
-  catch (error) {
-    console.error('OAuth2 callback error:', error);
-    res.redirect('/auth-failed.html');
-  }
-});
-
-// API endpoint to get user information
-app.get('/api/user', (req, res) => {
-  const origin = req.get('origin');
-  const allowedOrigins = ['https://savingshub.watch', 'https://savingshub.cloud'];
-
-  if (allowedOrigins.includes(origin) || req.get('host').includes('savingshub.cloud')) {
-    const authHeader = req.get('Authorization');
-    if (authHeader) {
-      const token = authHeader.split(' ')[1];
-      const user = Object.values(users).find(u => u.token === token);
-      if (user) {
-        return res.json(user);
-      }
+      };
+  
+      // Store user data locally
+      users[user.id] = user;
+      users[user.id].token = tokenData.access_token; // Store the access token with user data
+      saveUsersToFile();
+  
+      console.log('User authenticated:', user); // Log user data for debugging
+      res.redirect(`/dashboard.html`);
     }
-    res.status(401).json({ error: 'Unauthorized' });
-  } else {
-    console.error('Unauthorized access attempt'); // Log unauthorized access attempts
-    res.status(401).json({ error: 'Unauthorized' });
-  }
-});
-
-// Serve static files for the maintenance page
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Start the server
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server is running on port ${port}`);
-});
+    catch (error) {
+      console.error('OAuth2 callback error:', error);
+      res.redirect('/auth-failed.html');
+    }
+  });
+  
+  // API endpoint to get user information
+  app.get('/api/user', (req, res) => {
+    const allowedOrigins = ['https://savingshub.watch', 'https://savingshub.cloud'];
+    const origin = req.get('origin');
+    
+    if (allowedOrigins.includes(origin) || req.get('host').includes('savingshub.cloud')) {
+      // Check session
+      if (req.session && req.session.user) {
+        const user = users[req.session.user.id];
+        if (user) {
+          return res.json(user);
+        }
+      }
+      res.status(401).json({ error: 'Unauthorized' });
+    } else {
+      console.error('Unauthorized access attempt'); // Log unauthorized access attempts
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+  });
+  
+  // Serve static files for the maintenance page
+  app.use(express.static(path.join(__dirname, 'public')));
+  
+  // Start the server
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`Server is running on port ${port}`);
+  });
+  
