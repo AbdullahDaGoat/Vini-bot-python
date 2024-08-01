@@ -6,7 +6,6 @@ const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const path = require('path');
 const cookieSession = require('cookie-session');
-const nodemailer = require('nodemailer');
 
 // Load environment variables
 dotenv.config();
