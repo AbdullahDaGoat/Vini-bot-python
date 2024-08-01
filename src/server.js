@@ -23,7 +23,7 @@ const port = process.env.PORT || 443;
 
 // Middleware setup
 app.use(cors({
-  origin: 'https://savingshub.watch',
+  origin: ['https://savingshub.watch', 'https://savingshub.cloud'],
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -167,15 +167,11 @@ const authenticatedUsers = {};
 
 // Middleware to check if user is authenticated
 app.use((req, res, next) => {
-  const userId = req.query.userId || req.body.userId;
   console.log('Middleware - Session User:', req.session?.user); // Add a log to check session user
   if (req.session?.user) {
-    return res.redirect(`/dashboard.html?userId=${req.session.user.id}`);
+    return next();
   }
-  if (userId && authenticatedUsers[userId]) {
-    return res.redirect(`/dashboard.html?userId=${userId}`);
-  }
-  next();
+  res.status(401).json({ error: 'Unauthorized' });
 });
 
 // OAuth2 authentication endpoint
@@ -262,13 +258,10 @@ app.get('/auth/discord/callback', async (req, res) => {
 
 // API endpoint to get user information
 app.get('/api/user', (req, res) => {
-  const userId = req.query.userId || req.body.userId;
-  console.log('API User - Session User:', req.session?.user); // Add a log to check session user
+  // Check if the user is stored in the session
   if (req.session?.user) {
+    console.log('API User - Session User:', req.session.user); // Add a log to check session user
     return res.json(req.session.user);
-  }
-  if (userId && authenticatedUsers[userId]) {
-    return res.json(authenticatedUsers[userId]);
   }
   res.status(401).json({ error: 'Unauthorized' });
 });
