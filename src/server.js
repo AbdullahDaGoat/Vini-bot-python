@@ -19,7 +19,7 @@ const role_id = `1261067959393193994`;
 const log_channel = `1261070442035286178`; // Replace with your log channel ID
 
 const app = express();
-const port =  process.env.PORT || 443; 
+const port = process.env.PORT || 443; 
 
 // Middleware setup
 app.use(cors({
@@ -36,7 +36,7 @@ app.use(express.static('public'));
 
 app.use(cookieSession({
   name: 'session',
-  keys: [process.env.SECRET], // secret keys used to sign the cookie
+  keys: [process.env.SECRET_KEY], // secret keys used to sign the cookie
   maxAge: 1000 * 60 * 15, // 15 minutes
   secure: process.env.NODE_ENV === 'production', // ensure secure cookies in production
   httpOnly: true,
@@ -261,6 +261,7 @@ app.get('/auth/discord/callback', async (req, res) => {
 // API endpoint to get user information
 app.get('/api/user', (req, res) => {
   const userId = req.query.userId || req.body.userId;
+  console.log('Session User:', req.session.user); // Log session user
   if (req.session.user) {
     return res.json(req.session.user);
   }
