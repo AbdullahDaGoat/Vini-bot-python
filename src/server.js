@@ -10,16 +10,16 @@ const cookieSession = require('cookie-session');
 // Load environment variables
 dotenv.config();
 
-const redirect_uri = `https://Savingshub.cloud/auth/discord/callback`;
-const client_id = `1256482400066605086`;
+const redirect_uri = process.env.REDIRECT_URI;
+const client_id = process.env.DISCORD_CLIENT_ID;
 
 // Hardcoded variables to change
-const guild_id = `1261067418219057173`;
-const role_id = `1261067959393193994`;
-const log_channel = `1261070442035286178`; // Replace with your log channel ID
+const guild_id = process.env.GUILD_ID;
+const role_id = process.env.ROLE_ID;
+const log_channel = process.env.LOGGING_CHANNEL_ID;
 
 const app = express();
-const port = process.env.PORT || 443; 
+const port = process.env.PORT || 443;
 
 // Middleware setup
 app.use(cors({
@@ -168,6 +168,7 @@ const authenticatedUsers = {};
 // Middleware to check if user is authenticated
 app.use((req, res, next) => {
   const userId = req.query.userId || req.body.userId;
+  console.log('Middleware - Session User:', req.session.user); // Add a log to check session user
   if (req.session.user) {
     return res.redirect(`/dashboard.html?userId=${req.session.user.id}`);
   }
@@ -250,6 +251,7 @@ app.get('/auth/discord/callback', async (req, res) => {
     authenticatedUsers[user.id] = user;
 
     req.session.user = user;
+    console.log('OAuth2 callback - Session User:', req.session.user); // Add a log to check session user
 
     res.redirect(`/dashboard.html?userId=${user.id}`);
   } catch (error) {
@@ -261,7 +263,7 @@ app.get('/auth/discord/callback', async (req, res) => {
 // API endpoint to get user information
 app.get('/api/user', (req, res) => {
   const userId = req.query.userId || req.body.userId;
-  console.log('Session User:', req.session.user); // Log session user
+  console.log('API User - Session User:', req.session.user); // Add a log to check session user
   if (req.session.user) {
     return res.json(req.session.user);
   }
