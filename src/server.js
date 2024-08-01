@@ -241,37 +241,38 @@ app.get('/auth/discord/callback', async (req, res) => {
 
     console.log('User authenticated:', user); // Log user data for debugging
     res.redirect(`/dashboard.html`);
-  } catch (error) {
+  }
+  catch (error) {
     console.error('OAuth2 callback error:', error);
     res.redirect('/auth-failed.html');
-  }
-});
-
-// API endpoint to get user information
-app.get('/api/user', (req, res) => {
-  const origin = req.get('origin');
-  const allowedOrigins = ['https://savingshub.watch', 'https://savingshub.cloud'];
-
-  if (allowedOrigins.includes(origin) || req.get('host').includes('savingshub.cloud')) {
+    }
+    });
+    
+    // API endpoint to get user information
+    app.get('/api/user', (req, res) => {
+    const origin = req.get('origin');
+    const allowedOrigins = ['https://savingshub.watch', 'https://savingshub.cloud'];
+    
+    if (allowedOrigins.includes(origin) || req.get('host').includes('savingshub.cloud')) {
     const authHeader = req.get('Authorization');
     if (authHeader) {
-      const token = authHeader.split(' ')[1];
-      const userId = Object.keys(users).find(id => users[id].token === token);
-      if (userId) {
-        return res.json(users[userId]);
-      }
+    const token = authHeader.split(' ')[1];
+    const userId = Object.keys(users).find(id => users[id].token === token);
+    if (userId) {
+    return res.json(users[userId]);
+    }
     }
     res.status(401).json({ error: 'Unauthorized' });
-  } else {
+    } else {
     console.error('Unauthorized access attempt'); // Log unauthorized access attempts
     res.status(401).json({ error: 'Unauthorized' });
-  }
-});
-
-// Serve static files for the maintenance page
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Start the server
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server is running on port ${port}`);
-});
+    }
+    });
+    
+    // Serve static files for the maintenance page
+    app.use(express.static(path.join(__dirname, 'public')));
+    
+    // Start the server
+    app.listen(port, '0.0.0.0', () => {
+    console.log(`Server is running on port ${port}`);
+    });
