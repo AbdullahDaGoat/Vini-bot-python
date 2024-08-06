@@ -1,8 +1,12 @@
 import os
 import requests
 import discord
+from discord.ext import commands
+import re
+import random
+import string
 from discord import Embed, app_commands
-from flask import Flask, request, render_template, redirect, url_for, session, jsonify
+from flask import Flask, request, render_template, redirect, url_for, session, jsonify, make_response
 from flask_session import Session
 from dotenv import load_dotenv
 from flask_cors import CORS
@@ -10,8 +14,10 @@ import threading
 import asyncio
 from datetime import datetime, timedelta, timezone
 import jwt as pyjwt
+import logging
 
 load_dotenv()
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
@@ -22,27 +28,32 @@ Session(app)
 # Configure CORS to allow credentials and specify the allowed origin
 CORS(app, resources={r"/api/*": {"origins": ["https://savingshub.watch", "https://savingshub.cloud"], "supports_credentials": True}})
 
-# Handle preflight requests for CORS
 @app.before_request
 def handle_preflight():
     if request.method == 'OPTIONS':
-        response = app.make_default_options_response()
+        response = make_response()
         headers = response.headers
 
-        # Add the necessary CORS headers to the response
         headers['Access-Control-Allow-Origin'] = request.headers.get('Origin')
         headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS, PUT, DELETE'
-        headers['Access-Control-Allow-Headers'] = request.headers.get('Access-Control-Request-Headers')
+        headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
         headers['Access-Control-Allow-Credentials'] = 'true'
         
         return response
 
-# Add CORS headers to all responses
+# Ensure CORS headers are set for all responses
 @app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin')
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
+def set_cors_headers(response):
+    origin = request.headers.get('Origin')
+    logging.debug(f"Request origin: {origin}")
+    if origin in ["https://savingshub.watch", "https://savingshub.cloud"]:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        logging.debug(f"Set CORS headers for origin: {origin}")
+    else:
+        logging.debug(f"Origin not allowed: {origin}")
     return response
+
 
 intents = discord.Intents.default()
 intents.members = True
@@ -100,6 +111,10 @@ def auth_discord_callback():
 def api_user():
     token = request.cookies.get('auth_token') or request.args.get('token')
     
+    logging.debug(f"Received token: {token}")
+    logging.debug(f"Request headers: {request.headers}")
+    logging.debug(f"Request cookies: {request.cookies}")
+
     if not token:
         return jsonify({'error': 'No token provided'}), 401
     
@@ -230,6 +245,61 @@ async def api(interaction: discord.Interaction):
     embed = Embed(title="API Status", description=description, color=color)
     await interaction.response.send_message(embed=embed)
 
+def generate_token(user_data):
+    expiration = datetime.now(timezone.utc) + timedelta(hours=24)
+    payload = {"user": user_data, "exp": expiration}
+    return pyjwt.encode(payload, app.config['SECRET_KEY'], algorithm="HS256")
+
+# Simple token generation and validation for mobile
+active_tokens = {}
+
+# List to store used words
+used_words = []
+
+# Function to generate a simple word
+def generate_simple_word(min_length=3, max_length=8):
+    vowels = 'aeiou'
+    consonants = 'bcdfghjklmnpqrstvwxyz'
+    
+    length = random.randint(min_length, max_length)
+    word = ''
+    
+    for i in range(length):
+        if i % 2 == 0:
+            word += random.choice(consonants)
+        else:
+            word += random.choice(vowels)
+    
+    return word
+
+def create_one_time_token():
+    while True:
+        token = generate_simple_word()
+        if token not in used_words:
+            used_words.append(token)
+            return token
+
+@app.route('/api/validate_token/<token>', methods=['GET'])
+def validate_token(token):
+    if token in used_words:
+        used_words.remove(token)
+        return jsonify({"status": "true"})
+    return jsonify({"status": "false"})
+
+@tree.command(name="generatetoken", description="Generate a one-time token for mobile-only login")
+async def generatetoken(interaction: discord.Interaction):
+    required_role = discord.utils.get(interaction.guild.roles, id=int(os.getenv('ROLE_ID')))
+    if required_role not in interaction.user.roles:
+        await interaction.response.send_message("You don't have the right role for this.", ephemeral=True)
+        return
+    
+    token = create_one_time_token()
+
+    try:
+        await interaction.response.send_message(f"Your one-time token: `{token}`. Valid for one use.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message(f"Your one-time token: `{token}`. Valid for one use.", ephemeral=True)
+
 @tree.command(name="checkbot", description="Check the bot status")
 async def checkbot(interaction: discord.Interaction):
     try:
@@ -251,7 +321,7 @@ async def checkbot(interaction: discord.Interaction):
 async def help(interaction: discord.Interaction):
     embed = Embed(
         title="Help Menu",
-        description="Available commands: /api, /checkbot, /help, /params",
+        description="Available commands: /api, /checkbot, /help, /params, /generatetoken",
         color=discord.Color.blue()
     )
     await interaction.response.send_message(embed=embed)

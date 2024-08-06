@@ -6,7 +6,7 @@
   <title>User Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.10.5/cdn.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -23,41 +23,45 @@
       },
     }
   </script>
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-      }
-      .animate-float {
-        animation: float 6s ease-in-out infinite;
-      }
-      @keyframes float {
-        0% { transform: translatey(0px); }
-        50% { transform: translatey(-20px); }
-        100% { transform: translatey(0px); }
-      }
-      .animate-matrix {
-        background: linear-gradient(to bottom, #000000, #003300);
-        background-size: 200% 200%;
-        animation: matrix 15s ease infinite;
-      }
-      @keyframes matrix {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-      }
-    </style>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .animate-float {
+      animation: float 6s ease-in-out infinite;
+    }
+    @keyframes float {
+      0% { transform: translatey(0px); }
+      50% { transform: translatey(-20px); }
+      100% { transform: translatey(0px); }
+    }
+    .animate-matrix {
+      background: linear-gradient(to bottom, #000000, #003300);
+      background-size: 200% 200%;
+      animation: matrix 15s ease infinite;
+    }
+    @keyframes matrix {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+  </style>
 </head>
-<body class="h-full flex items-center justify-center transition-colors duration-300" id="body" x-data='{
-  user: {{ user | tojson }},
-  loading: false,
-  error: "",
-  isDark: false
-}' :class="{ 'animate-matrix': isDark, 'animate-stars': !isDark }" x-init="
-  isDark = localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  $watch('isDark', value => localStorage.setItem('theme', value ? 'dark' : 'light'))
-">
-  <div class="container mx-auto px-4 py-8">
-    <header class="mb-8">
+<body class="h-full flex items-center justify-center transition-colors duration-300" id="body"
+  x-data='{
+    user: {{ user | tojson }},
+    loading: false,
+    error: "",
+    isDark: false,
+    init() {
+      this.isDark = localStorage.getItem("theme") === "dark" || (!localStorage.getItem("theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      this.$watch("isDark", value => localStorage.setItem("theme", value ? "dark" : "light"));
+    }
+  }'
+  :class="{ 'animate-matrix': isDark, 'animate-stars': !isDark }">
+
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <header class="mb-8 text-center">
       <h1 class="text-4xl font-bold mb-2" :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }">User Dashboard</h1>
       <p :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }">
         Additional info can be found at: <a href="/api/user" class="hover:underline">/api/user</a>
@@ -75,49 +79,33 @@
 
     <div x-show="!loading && !error" class="bg-opacity-70 backdrop-filter backdrop-blur-lg rounded-xl shadow-2xl overflow-hidden transition-colors duration-300" :class="{ 'bg-gray-900': isDark, 'bg-white': !isDark }">
       <div class="p-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="p-4 rounded-lg border" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
-            <img :src="user.avatar" alt="User Avatar" class="w-48 h-48 rounded-full mx-auto mb-4 border-4" :class="{ 'border-green-400': isDark, 'border-purple-600': !isDark }">
+            <img :src="user.avatar" alt="User Avatar" class="w-32 h-32 md:w-48 md:h-48 rounded-full mx-auto mb-4 border-4" :class="{ 'border-green-400': isDark, 'border-purple-600': !isDark }">
             <h2 class="text-2xl font-semibold text-center" :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }" x-text="user.username"></h2>
             <p class="text-center" :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }" x-text="'#' + user.discriminator"></p>
           </div>
-          <div class="grid grid-cols-1 gap-4">
-            <div class="p-4 rounded-lg border" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
-              <h3 class="text-sm font-semibold mb-1" :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }">Email</h3>
-              <p :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }" x-text="user.email"></p>
-            </div>
-            <div class="p-4 rounded-lg border" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
-              <h3 class="text-sm font-semibold mb-1" :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }">Joined at</h3>
-              <p :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }" x-text="user.joined_at"></p>
-            </div>
-            <div class="p-4 rounded-lg border" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
-              <h3 class="text-sm font-semibold mb-1" :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }">Nickname</h3>
-              <p :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }" x-text="user.nickname"></p>
-            </div>
-            <div class="p-4 rounded-lg border" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
-              <h3 class="text-sm font-semibold mb-1" :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }">Verified by Discord</h3>
-              <p :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }" x-text="user.verified"></p>
-            </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <template x-for="(value, key) in {Email: user.email, 'Joined at': user.joined_at, Nickname: user.nickname, 'Verified by Discord': user.verified}">
+              <div class="p-4 rounded-lg border" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
+                <h3 class="text-sm font-semibold mb-1" :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }" x-text="key"></h3>
+                <p :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }" x-text="value"></p>
+              </div>
+            </template>
           </div>
         </div>
-        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="p-4 rounded-lg border" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
-            <h3 class="text-sm font-semibold mb-1" :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }">Roles</h3>
-            <p :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }" x-text="user.roles.join(', ')"></p>
-          </div>
-          <div class="p-4 rounded-lg border" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
-            <h3 class="text-sm font-semibold mb-1" :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }">Connections</h3>
-            <p :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }" x-text="user.connections ? user.connections.join(', ') : 'N/A'"></p>
-          </div>
-          <div class="p-4 rounded-lg border" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
-            <h3 class="text-sm font-semibold mb-1" :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }">Guilds</h3>
-            <p :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }" x-text="user.guilds ? user.guilds.join(', ') : 'N/A'"></p>
-          </div>
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <template x-for="(value, key) in {Roles: user.roles.join(', '), Connections: user.connections ? user.connections.join(', ') : 'N/A', Guilds: user.guilds ? user.guilds.join(', ') : 'N/A'}">
+            <div class="p-4 rounded-lg border" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
+              <h3 class="text-sm font-semibold mb-1" :class="{ 'text-green-400': isDark, 'text-indigo-600': !isDark }" x-text="key"></h3>
+              <p :class="{ 'text-green-300': isDark, 'text-purple-600': !isDark }" x-text="value"></p>
+            </div>
+          </template>
         </div>
       </div>
       <div class="px-6 py-4 border-t-2" :class="{ 'bg-gray-800 border-green-400': isDark, 'bg-white border-purple-600': !isDark }">
-        <div class="flex justify-end space-x-4">
-          <button @click="accept" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:scale-105">
+        <div class="flex justify-end">
+          <button @click="accept()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:scale-105">
             I Accept
           </button>
         </div>
@@ -135,7 +123,6 @@
     function accept() {
       window.location.href = 'https://savingshub.watch/';
     }
-
   </script>
 </body>
 </html>
